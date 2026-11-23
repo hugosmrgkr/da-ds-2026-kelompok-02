@@ -33,7 +33,7 @@ export default function KelolaData({meta,data,filters,reload}){
  ['Responden / profil',readiness.profiles],['Tanggal pengamatan',readiness.date_count],
  ['Sesi valid',readiness.valid_sessions],['Sesi perlu review',readiness.unresolved_session_reviews],
  ['Baris profil karantina',readiness.profile_quarantined],['Baris harian karantina',readiness.daily_quarantined],
- ['Isu kualitas tercatat',readiness.issue_count],['Window histori 7 hari',readiness.history_7d_respondents],
+ ['Isu kualitas tercatat',readiness.issue_count],['Responden dengan histori 7 hari',readiness.history_7d_respondents],
  ['Window training 7+7 hari',readiness.training_windows_7d]
  ].map(([label,value])=><div key={label}><span>{label}</span><b>{whole(value)}</b></div>)}
  </div>
