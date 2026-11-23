@@ -67,19 +67,20 @@ export function CategoryBars({rows=[]}){
   hovertemplate:'%{y}<br>SBP %{x:.1f} mmHg<br>n=%{customdata[0]} hari, %{customdata[1]} ID<extra></extra>'}]}
   layout={{margin:{l:155,r:20,t:16,b:60},xaxis:{title:'Rata-rata SBP harian (mmHg)'},yaxis:{automargin:true,autorange:'reversed',title:'Kategori jawaban'},showlegend:false}}/>;
 }
-export function CountBars({rows=[],onSelect,unit='responden'}){
+export function CountBars({rows=[],onSelect,unit='responden',colors,barColor=BLUE}){
+ const barColors=colors?.length?rows.map((_,i)=>colors[i%colors.length]):barColor;
  return <PlotlyChart height={Math.max(280,rows.length*30+85)} data={[{type:'bar',orientation:'h',x:rows.map(r=>r.n),y:rows.map(r=>r.category),
-  marker:{color:BLUE},hovertemplate:'%{y}<br>%{x} '+unit+'<extra></extra>'}]} onClick={onSelect?event=>{const p=point(event);if(p?.y&&p.y!=='Tidak diketahui')onSelect(p.y)}:undefined}
+  marker:{color:barColors,line:{color:'rgba(255,255,255,.85)',width:1},corners:4},hovertemplate:'%{y}<br>%{x} '+unit+'<extra></extra>'}]} onClick={onSelect?event=>{const p=point(event);if(p?.y&&p.y!=='Tidak diketahui')onSelect(p.y)}:undefined}
   layout={{margin:{l:150,r:16,t:14,b:55},xaxis:{title:`Jumlah ${unit}`,dtick:1},yaxis:{title:'Kategori',autorange:'reversed',automargin:true},showlegend:false}}/>;
 }
-export function Histogram({rows=[],field,label,unit}){
+export function Histogram({rows=[],field,label,unit,color=BLUE}){
  const a=rows.filter(r=>Number.isFinite(r[field]));
- return <PlotlyChart data={[{type:'histogram',x:a.map(r=>r[field]),marker:{color:BLUE,line:{color:'white',width:1}},hovertemplate:label+': %{x}<br>%{y} responden<extra></extra>'}]}
+ return <PlotlyChart data={[{type:'histogram',x:a.map(r=>r[field]),marker:{color,line:{color:'white',width:1}},hovertemplate:label+': %{x}<br>%{y} responden<extra></extra>'}]}
   layout={{xaxis:{title:`${label} (${unit})`},yaxis:{title:'Jumlah responden',dtick:1},showlegend:false,bargap:.08}}/>;
 }
-export function PieCategories({rows=[],unit='catatan harian',onSelect}){
+export function PieCategories({rows=[],unit='catatan harian',onSelect,colors=palette}){
  return <PlotlyChart height={320} data={[{type:'pie',labels:rows.map(r=>r.category),values:rows.map(r=>r.n),hole:.56,textinfo:'percent',
-  hovertemplate:'%{label}: %{value} '+unit+' (%{percent})<extra></extra>',marker:{colors:palette}}]}
+  hovertemplate:'%{label}: %{value} '+unit+' (%{percent})<extra></extra>',marker:{colors}}]}
   onClick={onSelect?event=>{const p=point(event);if(p?.label&&p.label!=='Tidak diketahui')onSelect(p.label)}:undefined}
   layout={{showlegend:true,legend:{orientation:'h',y:-.12},margin:{l:12,r:12,t:15,b:75}}}/>;
 }
