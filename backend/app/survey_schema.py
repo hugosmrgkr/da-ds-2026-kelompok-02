@@ -7,6 +7,13 @@ import re
 from datetime import datetime, date
 
 
+FRUIT_NO = "Tidak makan buah"
+FRUIT_YES = "Makan buah"
+# Kontrak CSV sintetis lama tetap utuh agar fingerprint/artefak model sintetis tidak berubah.
+FRUIT_SYNTHETIC = ["Tidak mengonsumsi buah", "1 porsi", "2 porsi", "3 porsi atau lebih"]
+_NUMBER_WORDS = ("satu", "dua", "tiga", "empat", "lima", "enam", "tujuh", "delapan", "sembilan", "sepuluh")
+
+
 def field(technical, kind="text", unit="—", bounds=None, categories=(), max_length=None, note=""):
     return dict(technical=technical, kind=kind, unit=unit, bounds=bounds,
                 categories=list(categories), max_length=max_length, note=note)
@@ -60,7 +67,8 @@ DAILY_FIELDS.extend([
     field("sitting", "category", categories=["Kurang dari 4 jam", "4–7 jam", "8–10 jam", "Lebih dari 10 jam"], max_length=90),
     field("sleep_hours", "sleep", "jam", [0, 18], note="HH:MM sebagai durasi hanya untuk simulasi. Data aktual tetap NA sampai definisi disetujui."),
     field("salty_food", "category", categories=["Tidak sama sekali", "1 kali", "2 kali", "3 kali atau lebih"], max_length=90),
-    field("fruit", "category", categories=["Tidak mengonsumsi buah", "1 porsi", "2 porsi", "3 porsi atau lebih"], max_length=90),
+    field("fruit", "binary_fruit", categories=[FRUIT_NO, FRUIT_YES], max_length=90,
+          note="Data AKTUAL (bukan sintetis): keputusan tim, jawaban bernilai (1 porsi, 2, dua, satu, dst.) = Makan buah; kosong, 0, '-' atau 'tidak' = Tidak makan buah."),
     field("vegetable", "category", categories=["Tidak mengonsumsi sayur", "1 porsi", "2 porsi", "3 porsi atau lebih"], max_length=90),
     field("caffeine", "category", categories=["Tidak mengonsumsi", "1 gelas", "2 gelas", "3 gelas atau lebih"], max_length=90),
     field("smoked", "category", categories=["Ya", "Tidak", "Tidak berlaku karena saya tidak merokok"], max_length=110),
@@ -94,10 +102,42 @@ def parse_numeric(value, unit=None, bounds=None, integer=False):
     return int(n) if integer else n
 
 
+def parse_fruit_binary(value):
+    """Kelompokkan jawaban buah menjadi dua kategori: Makan buah / Tidak makan buah.
+
+    Kosong, 0, '-' dan jawaban negatif -> Tidak makan buah. Angka/kata bilangan > 0
+    (termasuk salah ketik seperti '1 prsi') -> Makan buah. Jawaban yang bertentangan
+    atau tidak dikenali tidak ditebak: (None, 'invalid_category') agar masuk review.
+    """
+    s = text(value)
+    if s is None:
+        return FRUIT_NO, None
+    n = re.sub(r"\s+", " ", s.casefold()).strip(" .")
+    if re.fullmatch(r"[-\u2013\u2014_]+", n):
+        return FRUIT_NO, None
+    negative = bool(re.search(r"\b(tidak|tdk|tak|ga|gak|nggak|belum|nol)\b", n))
+    number = re.search(r"-?\d+(?:[.,]\d+)?", n)
+    positive = (float(number.group().replace(",", ".")) > 0) if number else bool(
+        re.search(r"\b(" + "|".join(_NUMBER_WORDS) + r")\b", n))
+    zero = bool(number) and float(number.group().replace(",", ".")) == 0
+    if negative and positive:
+        return None, "invalid_category"
+    if negative or zero:
+        return FRUIT_NO, None
+    if positive:
+        return FRUIT_YES, None
+    return None, "invalid_category"
+
+
 def parse_value(value, spec, synthetic=True):
     """Return (clean_value, issue_code). No raw free-text values enter issue reports."""
-    s = text(value)
     kind = spec["kind"]
+    if kind == "binary_fruit":
+        if synthetic:  # fixture sintetis: empat label asli, tanpa pengelompokan
+            canonical = {v.casefold(): v for v in FRUIT_SYNTHETIC}.get(re.sub(r"\s+", " ", text(value) or "").casefold())
+            return (canonical, None) if canonical else (None, None if text(value) is None else "invalid_category")
+        return parse_fruit_binary(value)
+    s = text(value)
     if kind == "excluded":
         return None, None
     if s is None:

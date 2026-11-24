@@ -31,8 +31,8 @@ def dictionary_markdown():
             categories='; '.join(spec['categories']) or 'Teks sumber / numerik sesuai tipe'
             rule=(f"Rentang teknis {spec['bounds'][0]}–{spec['bounds'][1]}. " if spec['bounds'] else '')
             rule+=(f"Maksimum {spec['max_length']} karakter. " if spec['max_length'] else '')
-            transform='Normalisasi spasi/kapital ke label enum' if spec['kind'] in ('category','open_category') else 'Parse numerik; terima sufiks hanya sesuai satuan' if spec['kind'] in ('number','integer') else 'Parse sesuai definisi tipe'
-            missing='Tidak dimuat (identitas)' if spec['kind']=='excluded' else 'Karantina baris bila kosong/invalid' if spec['kind'] in ('id','date') else 'NA; catat bila tidak valid'
+            transform='Dua kategori: nilai > 0/kata bilangan = Makan buah; kosong, 0, "-", "tidak" = Tidak makan buah' if spec['kind']=='binary_fruit' else 'Normalisasi spasi/kapital ke label enum' if spec['kind'] in ('category','open_category') else 'Parse numerik; terima sufiks hanya sesuai satuan' if spec['kind'] in ('number','integer') else 'Parse sesuai definisi tipe'
+            missing='Kosong dikelompokkan ke Tidak makan buah (keputusan tim); jawaban tak dikenali = NA + issue' if spec['kind']=='binary_fruit' else 'Tidak dimuat (identitas)' if spec['kind']=='excluded' else 'Karantina baris bila kosong/invalid' if spec['kind'] in ('id','date') else 'NA; catat bila tidak valid'
             rows.append([index,name,spec['technical'],title,spec['kind'],spec['unit'],categories,missing,rule+spec['note'],transform])
         parts.extend(['## '+title,markdown_table(['No.','Nama asli','Nama teknis','Sumber','Tipe','Satuan','Kategori','Missing','Validasi / catatan','Transformasi'],rows)])
     parts.extend(['## Kolom turunan dan penyimpanan',
