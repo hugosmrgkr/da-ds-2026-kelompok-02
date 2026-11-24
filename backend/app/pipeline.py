@@ -27,11 +27,15 @@ EXPECTED_DAILY_HEADERS = ['Timestamp', '1. ID Responden', '2. Tanggal pengamatan
 def header_key(v):
     return re.sub(r"\s+", " ", str(v).strip().lstrip("\ufeff").strip()).casefold()
 
+# Versi ekspor aktual mengubah kata tanya nomor 22; makna kolom tetap sama.
+HEADER_ALIASES = {header_key('22. Hari ini, berapa porsi buah yang Anda makan?'):
+                  {header_key('22. Hari ini, berapa banyak buah yang Anda makan?')}}
+
 def verify_headers(df, expected, name):
     if len(df.columns)!=len(expected):
         raise DataQualityError(f"{name}: perlu {len(expected)} kolom, menemukan {len(df.columns)}")
     for i,(current,want) in enumerate(zip(df.columns,expected)):
-        if header_key(current)!=header_key(want):
+        if header_key(current)!=header_key(want) and header_key(current) not in HEADER_ALIASES.get(header_key(want),()):
             raise DataQualityError(f"{name}: header kolom {i+1} berbeda (diharapkan {want[:45]!r}, didapat {str(current)[:45]!r})")
 
 
@@ -224,3 +228,4 @@ def seed_if_empty(db:Session, root=None):
     profiles,days,sessions,quality=prepare(pd.read_csv(a,dtype=str,keep_default_na=False),pd.read_csv(b,dtype=str,keep_default_na=False))
     load_warehouse(db,profiles,days,sessions,quality,'Data sintetis dua formulir (SIM001?SIM019)','synthetic')
     return True
+    
