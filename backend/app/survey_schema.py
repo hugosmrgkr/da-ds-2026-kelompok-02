@@ -3,6 +3,7 @@
 Categories describe this questionnaire/fixture contract, not clinical definitions.
 Free-text answers are retained only where the questionnaire permits them.
 """
+import os
 import re
 from datetime import datetime, date
 
@@ -85,21 +86,80 @@ def text(value):
     return None if s.casefold() in ("", "nan", "none", "nat", "<na>") else s
 
 
+_NUM = r"\d+(?:[.,]\d+)?"
+_MIN_UNIT = r"(?:menit|mnt|min)"
+_RE_MINUTES = re.compile(r"(-?" + _NUM + r")\s*(?:(" + _MIN_UNIT + r")|(jam))?", re.I)
+_RE_HOUR_MINUTE = re.compile(r"(\d+)\s*jam\s*(\d{1,2})\s*" + _MIN_UNIT + r"?", re.I)
+
+
+def _to_float(token):
+    return float(token.replace(",", "."))
+
+
+def parse_duration_minutes(s):
+    """Durasi dalam menit dari teks, atau None bila tidak dikenali.
+
+    Diterima: "90", "90 menit", "90 mnt", "1,5 jam", "1 jam 30 menit". Satuan jam harus
+    ditulis eksplisit; angka tanpa satuan tetap dianggap menit (kontrak pertanyaan).
+    """
+    compound = _RE_HOUR_MINUTE.fullmatch(s)
+    if compound:
+        hours, minutes = int(compound.group(1)), int(compound.group(2))
+        return float(hours * 60 + minutes) if minutes < 60 else None
+    match = _RE_MINUTES.fullmatch(s)
+    if not match:
+        return None
+    n = _to_float(match.group(1))
+    return round(n * 60, 6) if match.group(3) else n
+
+
 def parse_numeric(value, unit=None, bounds=None, integer=False):
     s = text(value)
     if s is None:
         return None
-    suffix = {"tahun": "tahun", "cm": "cm", "kg": "kg", "menit": "menit", "hari/minggu": "hari"}.get(unit)
-    pattern = r"(-?\d+(?:[.,]\d+)?)" + (r"\s*(?:" + suffix + r")?" if suffix else "")
-    match = re.fullmatch(pattern, s, re.I)
-    if not match:
-        return None
-    n = float(match.group(1).replace(",", "."))
+    if unit == "menit":
+        n = parse_duration_minutes(s)
+        if n is None:
+            return None
+    else:
+        suffix = {"tahun": "tahun", "cm": "cm", "kg": "kg", "hari/minggu": "hari"}.get(unit)
+        pattern = r"(-?\d+(?:[.,]\d+)?)" + (r"\s*(?:" + suffix + r")?" if suffix else "")
+        match = re.fullmatch(pattern, s, re.I)
+        if not match:
+            return None
+        n = float(match.group(1).replace(",", "."))
     if bounds and not bounds[0] <= n <= bounds[1]:
         return None
     if integer and not n.is_integer():
         return None
     return int(n) if integer else n
+
+
+# Durasi tidur data AKTUAL: dimatikan secara default sampai tim/dosen menyetujui definisinya.
+# Aktifkan hanya dengan TOBA_SLEEP_EXPLICIT_UNITS=1. Hanya bentuk berunit eksplisit yang
+# diterima; angka telanjang dan HH:MM tetap "sleep_semantics_unconfirmed".
+SLEEP_FLAG = "TOBA_SLEEP_EXPLICIT_UNITS"
+_RE_SLEEP_HOURS = re.compile(r"(" + _NUM + r")\s*jam", re.I)
+_RE_SLEEP_MINUTES = re.compile(r"(" + _NUM + r")\s*" + _MIN_UNIT, re.I)
+
+
+def sleep_explicit_enabled():
+    return os.environ.get(SLEEP_FLAG, "").strip() == "1"
+
+
+def parse_sleep_explicit(s):
+    """Return (matched, hours). matched=False berarti tidak ada satuan eksplisit yang dikenali."""
+    compound = _RE_HOUR_MINUTE.fullmatch(s)
+    if compound:
+        hours, minutes = int(compound.group(1)), int(compound.group(2))
+        return (True, hours + minutes / 60) if minutes < 60 else (True, None)
+    match = _RE_SLEEP_HOURS.fullmatch(s)
+    if match:
+        return True, _to_float(match.group(1))
+    match = _RE_SLEEP_MINUTES.fullmatch(s)
+    if match:
+        return True, _to_float(match.group(1)) / 60
+    return False, None
 
 
 def parse_fruit_binary(value):
@@ -172,6 +232,12 @@ def parse_value(value, spec, synthetic=True):
         return None, "invalid_time"
     if kind == "sleep":
         if not synthetic:
+            if sleep_explicit_enabled():
+                matched, hours = parse_sleep_explicit(s)
+                if matched:
+                    if hours is not None and 0 <= hours <= 18:
+                        return round(hours, 3), None
+                    return None, "invalid_sleep_duration"
             return None, "sleep_semantics_unconfirmed"
         if re.fullmatch(r"\d{1,2}:\d{2}", s):
             h, m = map(int, s.split(":"))
