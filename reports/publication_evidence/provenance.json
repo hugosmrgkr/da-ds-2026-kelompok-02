@@ -1,0 +1,27 @@
+{
+  "schema_version": "1.0",
+  "generated_at_utc": "2026-11-25T08:01:48.048963+00:00",
+  "run_id": "e34327cd28c78f592900",
+  "integrity_status": "VALID",
+  "hash_convention": "utf8-lf-v1",
+  "selected_model": "selected_model.joblib",
+  "selected_model_promoted_to_serving": false,
+  "target": "future_7d_mean_sbp",
+  "is_synthetic": true,
+  "is_diagnosis": false,
+  "real_model_validated": false,
+  "target_approved": false,
+  "verified_source_sha256": {
+    "models/tuning_week10/selected_model.joblib": "50c8b1e49f2fbc68615ee56f82ceb235271a4ccf3a8ea6b960cd51e4e255b7ca",
+    "models/tuning_week10/tuning_metrics.json": "cb03d3d1047e05c6102c309f012ecc2a02aef20d9245fd6b0375cb513096454c",
+    "reports/week10_tuning/historical_test_predictions.csv": "3fdb13ce680be14d19fe65955cc18f3cb499cc49999515235b4ddb71e8f47d13",
+    "reports/week10_tuning/validation_predictions.csv": "4dc45b6297b71c9a73364d3bb4241050a38d88af70bdeb3eba31c00dc1d0a7ff"
+  },
+  "evaluation_rows": 11,
+  "limitations": [
+    "DATA SINTETIS / SIMULASI. Inner GroupKFold memisahkan ID, tetapi kalender fit/validasi dapat beririsan dan target window training berkorelasi. Ini bukan validasi forecasting kronologis penuh. Test CP3 sudah pernah diperiksa; evaluasi ulang bersifat historis, bukan holdout baru. Sampel kecil; bukan validasi klinis atau hasil data aktual. Persetujuan target diasumsikan untuk tugas ini; bukti akademik belum direkam dalam artefak aktif.",
+    "Data yang digunakan bersifat sintetis/simulasi, bukan data operasional nyata.",
+    "Hasil ini bukan validasi klinis dan tidak digunakan untuk diagnosis medis.",
+    "Hasil tuning Week 10 tidak otomatis berarti model dipromosikan ke model serving."
+  ]
+}
