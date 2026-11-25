@@ -331,7 +331,7 @@ def export_markdown(
         "# Ringkasan Hasil Evaluasi Model",
         "",
         f"- **Run ID:** `{evaluation.get('run_id', 'tidak tersedia')}`",
-        f"- **Target:** {tuning.get('target', 'tidak dicantumkan')} ",
+        f"- **Target:** {tuning.get('target', 'tidak dicantumkan')}",
         f"- **Data sintetis:** `{tuning.get('is_synthetic', 'tidak dicantumkan')}`",
         f"- **Dipromosikan ke serving:** `{tuning.get('promoted_to_serving', 'tidak dicantumkan')}`",
         "",

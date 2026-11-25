@@ -1,0 +1,12 @@
+model,stage,split,mae,rmse,r2,n
+Naive 7-day mean,reference,historical_test,1.933673469388002,2.234722998598888,0.850309292185924,7
+Naive 7-day mean,reference,validation,1.90773809523807,2.376512228908036,0.864637219923341,60
+Linear Regression,original,historical_test,2.575491601598287,3.113984902541928,0.709343225217849,7
+Linear Regression,selected_configuration,historical_test,2.575491601598287,3.113984902541928,0.709343225217849,7
+Linear Regression,selected_configuration,validation,2.180455904473416,2.758825575193158,0.817582018737015,60
+Random Forest,original,historical_test,2.959332062992575,3.440746932240071,0.645143383318487,7
+Random Forest,selected_configuration,historical_test,2.682003385995429,3.236340106993889,0.686053420611582,7
+Random Forest,selected_configuration,validation,2.911711433206533,4.324732279936142,0.551732127172943,60
+Hist Gradient Boosting,original,historical_test,3.693401559666999,4.83155121004623,0.300285910622861,7
+Hist Gradient Boosting,selected_configuration,historical_test,3.630538822294858,4.651231679058106,0.351539704894857,7
+Hist Gradient Boosting,selected_configuration,validation,3.317747090894317,4.510413380643798,0.512413298244123,60
