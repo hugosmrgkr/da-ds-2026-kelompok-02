@@ -152,3 +152,84 @@
   .kpi { flex-direction: row; min-height: 120px; }
   .filter-actions { width: 100%; margin-left: 0; }
 }
+
+/* ==========================================================================
+   Data Partisipan — design token dan tata letak.
+   Semua aturan di-scope ke .participant-page agar halaman lain tidak berubah.
+   Warna grafik ada di src/lib/chartTheme.js (palet sama dengan Visuals.jsx).
+   ========================================================================== */
+.participant-page {
+  --accent: #2879cf;          /* biru ikon KPI dashboard */
+  --accent-soft: #edf4fd;     /* latar badge/ikon biru muda dashboard */
+  --text-strong: #101f36;
+  --radius-card: 12px;
+  --gap-grid: 20px;
+  --pad-card: 24px;
+  --fs-card-title: 18px;      /* judul kartu */
+  --fs-body: 14px;            /* notice, deskripsi, tabel */
+  --fs-caption: 13px;         /* sampel, catatan statistik, hint tabel */
+  --fs-stat: 28px;            /* angka statistik */
+  min-width: 0;
+}
+.participant-page .notice { font-size: var(--fs-body); line-height: 1.7; padding: 14px 18px; gap: 12px; margin-bottom: 14px; }
+.participant-page .notice svg { margin-top: 3px; }
+.participant-page .interaction-hint { display: flex; align-items: flex-start; gap: 12px; background: var(--accent-soft); border: 1px solid #d6e6f9; border-left: 4px solid var(--accent); border-radius: 8px; color: #26496f; font-size: var(--fs-body); line-height: 1.6; padding: 12px 16px; margin: 0 0 var(--gap-grid); }
+.participant-page .interaction-hint svg { flex-shrink: 0; color: var(--accent); margin-top: 2px; }
+
+/* Kartu statistik: tinggi, padding, dan hierarki sama untuk keempatnya. */
+.participant-page .stat-grid { display: grid; grid-template-columns: repeat(4,minmax(0,1fr)); gap: var(--gap-grid); margin-bottom: var(--gap-grid); }
+.participant-page .stat-card { display: flex; flex-direction: column; gap: 8px; min-height: 136px; padding: 20px 22px; background: #fff; border: 1px solid var(--border); border-radius: var(--radius-card); box-shadow: 0 2px 6px #17365d03; min-width: 0; }
+.participant-page .stat-label { display: flex; align-items: center; gap: 8px; font-size: var(--fs-body); font-weight: 600; color: #283a53; }
+.participant-page .stat-label svg { flex-shrink: 0; color: var(--accent); }
+.participant-page .stat-value { font-size: var(--fs-stat); font-weight: 700; color: var(--text-strong); line-height: 1.2; letter-spacing: -.6px; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.participant-page .stat-value small { font-size: var(--fs-body); font-weight: 500; color: var(--muted); letter-spacing: 0; margin-left: 6px; }
+.participant-page .stat-sep { margin: 0 10px; color: #a4b2c5; font-weight: 400; }
+.participant-page .stat-note { margin-top: auto; font-size: var(--fs-caption); line-height: 1.5; color: var(--muted); }
+
+/* Kartu grafik. Fallback tanpa subgrid: kartu satu baris sama tinggi (stretch), deskripsi menempel di dasar. */
+.participant-page .participant-grid { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: var(--gap-grid); margin-bottom: var(--gap-grid); }
+.participant-page .participant-grid > .participant-card { display: flex; flex-direction: column; margin: 0; padding: var(--pad-card); min-width: 0; }
+.participant-page .participant-card .card-heading { margin: 0 0 8px; }
+.participant-page .participant-card .card-heading h2,
+.participant-page > .card .card-heading h2 { font-size: var(--fs-card-title); font-weight: 650; line-height: 1.35; }
+.participant-page .participant-card .sample-note { align-self: flex-start; justify-self: start; display: inline-flex; align-items: center; margin: 0 0 14px; padding: 4px 12px; border-radius: 999px; background: var(--accent-soft); color: var(--primary); font-size: var(--fs-caption); font-weight: 600; line-height: 1.4; }
+.participant-page .participant-card .chart-body { flex: 1; min-width: 0; }
+.participant-page .chart-explainer { font-size: var(--fs-body); line-height: 1.65; color: var(--muted); margin: 16px 0 0; padding-top: 14px; border-top: 1px solid #edf0f5; }
+
+/* Subgrid: judul, sampel, area grafik, dan deskripsi masing-masing berbagi baris
+   dengan kartu di sebelahnya, sehingga posisinya sejajar walau judul 1 atau 2 baris. */
+@supports (grid-template-rows: subgrid) {
+  .participant-page .participant-grid { row-gap: 0; margin-bottom: 0; }
+  .participant-page .participant-grid > .participant-card { display: grid; grid-row: span 4; grid-template-rows: subgrid; row-gap: 0; align-content: start; margin-bottom: var(--gap-grid); }
+  .participant-page .participant-card > .card-heading { grid-row: 1; }
+  .participant-page .participant-card > .sample-note { grid-row: 2; }
+  .participant-page .participant-card > .chart-body { grid-row: 3; }
+  .participant-page .participant-card > .chart-explainer { grid-row: 4; }
+}
+
+/* Tabel profil */
+.participant-page .table-toolbar .field > span { font-size: var(--fs-caption); }
+.participant-page .table-toolbar .field input { height: 40px; font-size: var(--fs-body); }
+.participant-page .hint-inline { font-size: var(--fs-caption); color: var(--muted); }
+.participant-page .data-table { font-size: var(--fs-caption); }
+.participant-page .data-table th,
+.participant-page .data-table td { padding: 12px 14px; }
+.participant-page .data-table .link-button { margin: 0; white-space: nowrap; font-size: var(--fs-caption); }
+.participant-page .table-pagination span { font-size: var(--fs-caption); }
+
+@media (max-width: 1100px) {
+  .participant-page .participant-grid { grid-template-columns: 1fr; }
+  .participant-page .stat-grid { grid-template-columns: repeat(2,minmax(0,1fr)); }
+}
+@media (max-width: 720px) {
+  .participant-page .stat-grid { gap: 12px; }
+  .participant-page .stat-card { min-height: 124px; padding: 16px; }
+  .participant-page .stat-value { font-size: 25px; }
+  .participant-page .participant-grid > .participant-card { padding: 18px 16px; }
+  .participant-page .participant-card .card-heading h2,
+  .participant-page > .card .card-heading h2 { font-size: 17px; }
+  .participant-page .interaction-hint { padding: 12px 14px; }
+}
+@media (max-width: 420px) {
+  .participant-page .stat-grid { grid-template-columns: 1fr; }
+}
