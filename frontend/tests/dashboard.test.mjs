@@ -332,3 +332,174 @@ test('mismatched model response is rejected rather than displayed with the wrong
     assert.equal(renderer.root.findAll(node=>node.props.className==='prediction-result').length,0);
   }finally{await dispose();}
 });
+
+const laporanRegressionFixture = {
+  empty: false,
+
+  kpis: {
+    respondents: 23,
+    daily_records: 77,
+    sessions: 151,
+    dates: 30,
+    mean_sbp: 123.4,
+    mean_dbp: 78.9
+  },
+
+  filtered_quality: {
+    daily_records: 77,
+    session_records: 151,
+    valid_sessions: 140,
+    incomplete_sessions: 8,
+    pending_review_sessions: 3,
+    missing_sleep_hours: 2,
+    missing_sitting: 1,
+    missing_stress: 4,
+    missing_activity_minutes: 5,
+    missing_smoke_count: 70
+  },
+
+  session_stats: [
+    { session: 'Pagi', sbp: 120, n: 75 },
+    { session: 'Malam', sbp: 126, n: 76 }
+  ],
+
+  trend: [
+    {
+      date: '2026-01-01',
+      session: 'Pagi',
+      sbp: 120,
+      dbp: 80,
+      n: 75
+    },
+    {
+      date: '2026-01-30',
+      session: 'Malam',
+      sbp: 126,
+      dbp: 82,
+      n: 76
+    }
+  ]
+};
+
+const laporanRegressionData = {
+  empty: false,
+  kpis: {
+    respondents: 23,
+    daily_records: 77,
+    sessions: 151,
+    dates: 30,
+    mean_sbp: 123.4,
+    mean_dbp: 78.9
+  },
+  filtered_quality: {
+    daily_records: 77,
+    session_records: 151,
+    valid_sessions: 140,
+    incomplete_sessions: 8,
+    pending_review_sessions: 3,
+    missing_sleep_hours: 2,
+    missing_sitting: 1,
+    missing_stress: 4,
+    missing_activity_minutes: 5,
+    missing_smoke_count: 70
+  },
+  session_stats: [
+    { session: 'Pagi', sbp: 120, n: 75 },
+    { session: 'Malam', sbp: 126, n: 76 }
+  ],
+  trend: [
+    { date: '2026-01-01', session: 'Pagi', sbp: 120, dbp: 80, n: 75 },
+    { date: '2026-01-30', session: 'Malam', sbp: 126, dbp: 82, n: 76 }
+  ]
+};
+
+test('Laporan menampilkan ringkasan sesuai data API', async () => {
+  try {
+    await act(async () => {
+      renderer = TestRenderer.create(
+        React.createElement(ActivePages.Laporan, {
+          data: laporanRegressionData,
+          go() {}
+        })
+      );
+    });
+
+    const page = text();
+
+    assert.match(page, /Apa yang dapat disimpulkan/);
+    assert.match(page, /23 ID menyumbang 77 catatan harian/);
+    assert.match(page, /123,4\/78,9 mmHg/);
+    assert.match(page, /140 dari 151 sesi masuk perhitungan valid/);
+    assert.match(page, /DATA SINTETIS/);
+  } finally {
+    await dispose();
+  }
+});
+
+test('Laporan memperbarui ringkasan ketika data filter berubah', async () => {
+  try {
+    await act(async () => {
+      renderer = TestRenderer.create(
+        React.createElement(ActivePages.Laporan, {
+          data: laporanRegressionData,
+          go() {}
+        })
+      );
+    });
+
+    assert.match(text(), /23 ID menyumbang 77 catatan harian/);
+
+    const updatedData = {
+      ...laporanRegressionData,
+      kpis: {
+        ...laporanRegressionData.kpis,
+        respondents: 10,
+        daily_records: 40
+      },
+      filtered_quality: {
+        ...laporanRegressionData.filtered_quality,
+        daily_records: 40,
+        session_records: 40,
+        valid_sessions: 35
+      }
+    };
+
+    await act(async () => {
+      renderer.update(
+        React.createElement(ActivePages.Laporan, {
+          data: updatedData,
+          go() {}
+        })
+      );
+    });
+
+    assert.match(text(), /10 ID menyumbang 40 catatan harian/);
+    assert.doesNotMatch(text(), /23 ID menyumbang 77 catatan harian/);
+    assert.match(text(), /35 dari 40 sesi masuk perhitungan valid/);
+  } finally {
+    await dispose();
+  }
+});
+
+test('Laporan menampilkan empty state ketika data tidak tersedia', async () => {
+  try {
+    await act(async () => {
+      renderer = TestRenderer.create(
+        React.createElement(ActivePages.Laporan, {
+          data: {
+            empty: true,
+            message: 'Data laporan belum tersedia.',
+            kpis: { sessions: 0 }
+          },
+          go() {}
+        })
+      );
+    });
+
+    assert.match(text(), /Data laporan belum tersedia/);
+    assert.doesNotMatch(text(), /Apa yang dapat disimpulkan/);
+    assert.equal(renderer.root.findAllByType('plot-probe').length, 0);
+  } finally {
+    await dispose();
+  }
+});
