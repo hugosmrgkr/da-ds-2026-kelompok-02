@@ -11,6 +11,17 @@ FRUIT_NO = "Tidak makan buah"
 FRUIT_YES = "Makan buah"
 # Kontrak CSV sintetis lama tetap utuh agar fingerprint/artefak model sintetis tidak berubah.
 FRUIT_SYNTHETIC = ["Tidak mengonsumsi buah", "1 porsi", "2 porsi", "3 porsi atau lebih"]
+
+# Pertanyaan asin/olahan (soal 21) menggabungkan dua jenis makanan berbeda ("makanan asin ATAU
+# makanan olahan") dalam satu hitungan frekuensi, sehingga angka 1/2/3 kali tidak bisa dipastikan
+# mengacu ke jenis yang mana. Tim memutuskan data AKTUAL disederhanakan jadi biner. Label
+# menyebutkan "asin/olahan" secara eksplisit (bukan sekadar "Makan"/"Tidak Makan") karena frasa
+# generik itu bisa disalahpahami sebagai "makan apa pun hari ini", padahal soalnya spesifik
+# tentang makanan asin/olahan.
+SALTY_NO = "Tidak mengonsumsi asin/olahan"
+SALTY_YES = "Mengonsumsi asin/olahan"
+# Kontrak CSV sintetis lama tetap utuh agar fingerprint/artefak model sintetis tidak berubah.
+SALTY_SYNTHETIC = ["Tidak sama sekali", "1 kali", "2 kali", "3 kali atau lebih"]
 _NUMBER_WORDS = ("satu", "dua", "tiga", "empat", "lima", "enam", "tujuh", "delapan", "sembilan", "sepuluh")
 
 
@@ -66,7 +77,11 @@ DAILY_FIELDS.extend([
     field("heavy_minutes", "integer", "menit", [0, 1440]),
     field("sitting", "category", categories=["Kurang dari 4 jam", "4–7 jam", "8–10 jam", "Lebih dari 10 jam"], max_length=90),
     field("sleep_hours", "sleep", "jam", [0, 18], note="HH:MM sebagai durasi hanya untuk simulasi. Data aktual tetap NA sampai definisi disetujui."),
-    field("salty_food", "category", categories=["Tidak sama sekali", "1 kali", "2 kali", "3 kali atau lebih"], max_length=90),
+    field("salty_food", "binary_salty", categories=[SALTY_NO, SALTY_YES], max_length=90,
+          note="Data AKTUAL (bukan sintetis): soal 21 menggabungkan asin dan olahan dalam satu "
+               "frekuensi, jadi jumlah pasti tidak dipakai; '1/2/3 kali atau lebih' = Mengonsumsi "
+               "asin/olahan, 'Tidak sama sekali' = Tidak mengonsumsi asin/olahan. Jawaban di luar "
+               "4 pilihan formulir tidak ditebak."),
     field("fruit", "binary_fruit", categories=[FRUIT_NO, FRUIT_YES], max_length=90,
           note="Data AKTUAL (bukan sintetis): keputusan tim, jawaban bernilai (1 porsi, 2, dua, satu, dst.) = Makan buah; kosong, 0, '-' atau 'tidak' = Tidak makan buah."),
     field("vegetable", "category", categories=["Tidak mengonsumsi sayur", "1 porsi", "2 porsi", "3 porsi atau lebih"], max_length=90),
@@ -129,14 +144,52 @@ def parse_fruit_binary(value):
     return None, "invalid_category"
 
 
-def parse_value(value, spec, synthetic=True):
-    """Return (clean_value, issue_code). No raw free-text values enter issue reports."""
-    kind = spec["kind"]
+def parse_salty_binary(value):
+    """Kelompokkan jawaban soal 21 (asin/olahan) menjadi dua kategori.
+
+    Soal 21 adalah pilihan ganda tertutup (radio button), bukan teks bebas seperti buah, jadi
+    jawaban aktual seharusnya persis salah satu dari empat label SALTY_SYNTHETIC. 'Tidak sama
+    sekali' -> Tidak mengonsumsi asin/olahan; '1/2/3 kali atau lebih' -> Mengonsumsi asin/olahan.
+    Jawaban di luar keempat pilihan itu tidak ditebak: (None, 'invalid_category') agar masuk
+    review, bukan dipaksa masuk salah satu kelompok.
+    """
+    s = text(value)
+    if s is None:
+        return None, None
+    canonical = {v.casefold(): v for v in SALTY_SYNTHETIC}.get(re.sub(r"\s+", " ", s).casefold())
+    if canonical is None:
+        return None, "invalid_category"
+    return (SALTY_NO, None) if canonical == SALTY_SYNTHETIC[0] else (SALTY_YES, None)
+
+
+def _binary_category_contract(kind):
+    """(synthetic_labels, no_label, yes_label, parser) for a binary-coded daily field."""
     if kind == "binary_fruit":
-        if synthetic:  # fixture sintetis: empat label asli, tanpa pengelompokan
-            canonical = {v.casefold(): v for v in FRUIT_SYNTHETIC}.get(re.sub(r"\s+", " ", text(value) or "").casefold())
-            return (canonical, None) if canonical else (None, None if text(value) is None else "invalid_category")
-        return parse_fruit_binary(value)
+        return FRUIT_SYNTHETIC, FRUIT_NO, FRUIT_YES, parse_fruit_binary
+    if kind == "binary_salty":
+        return SALTY_SYNTHETIC, SALTY_NO, SALTY_YES, parse_salty_binary
+    return None
+
+
+def parse_value(value, spec, synthetic):
+    """Return (clean_value, issue_code). No raw free-text values enter issue reports.
+
+    `synthetic` has no default on purpose: a caller that forgets to pass it would otherwise risk
+    a field like `fruit`/`salty_food` silently being parsed with the wrong contract (synthetic's
+    original multi-category labels instead of the actual-data binary grouping, or vice versa).
+    Omitting it is now a TypeError at the call site instead of a silent mis-parse.
+    """
+    kind = spec["kind"]
+    binary_contract = _binary_category_contract(kind)
+    if binary_contract:
+        synthetic_labels, _no_label, _yes_label, parser = binary_contract
+        s = text(value)
+        if spec["max_length"] and s is not None and len(s) > spec["max_length"]:
+            return None, "text_too_long"
+        if synthetic:  # fixture sintetis: label asli, tanpa pengelompokan
+            canonical = {v.casefold(): v for v in synthetic_labels}.get(re.sub(r"\s+", " ", s or "").casefold())
+            return (canonical, None) if canonical else (None, None if s is None else "invalid_category")
+        return parser(value)
     s = text(value)
     if kind == "excluded":
         return None, None
