@@ -1,0 +1,18 @@
+{
+  "actual_status": {
+    "eligible": false,
+    "message": "Berkas data sumber belum tersedia; eksperimen tidak dapat dijalankan.",
+    "reasons": [
+      "actual_export_files_missing"
+    ]
+  },
+  "protocol_dry_run": {
+    "release_id": "synthetic-protocol-v1",
+    "run_id": "6ef9947486d221ec0321",
+    "selected_model": "Linear Regression",
+    "beats_naive_on_validation": false,
+    "cv_strategy": "respondent_group_kfold_non_chronological_short_calendar"
+  },
+  "legacy_artifacts_untouched": true,
+  "legacy_artifact_count": 12
+}

@@ -54,7 +54,9 @@ def sleep_hours(v, synthetic=True):
 
 
 def clean_date(v):
-    return parse_value(v, DAILY_FIELDS[2])[0]
+    # `date` kind ignores `synthetic` entirely (see survey_schema.parse_value); passed explicitly
+    # anyway now that the parameter is required, per the code-review fix removing its old default.
+    return parse_value(v, DAILY_FIELDS[2], synthetic=False)[0]
 
 
 def _canonical_rows(df, specs, source, synthetic=True):

@@ -1,0 +1,101 @@
+{
+  "contract_version": "release-v1",
+  "release_id": "synthetic-protocol-v1",
+  "run_id": "6ef9947486d221ec0321",
+  "source_kind": "synthetic",
+  "training_data_version": "51394dad1ec8fa22d6ff2ed5503319625e956b366fe8ed87b92e8e0824d32427",
+  "dataset_schema_version": "cp2-v1",
+  "feature_schema_version": "cp3-history7-v1",
+  "target": "future_7d_mean_sbp",
+  "history_days": 7,
+  "horizon_days": 7,
+  "features": [
+    "past_7d_sbp",
+    "past_7d_dbp",
+    "past_7d_sbp_std",
+    "age",
+    "bmi",
+    "past_7d_activity",
+    "past_7d_sleep",
+    "past_7d_stress"
+  ],
+  "algorithm": "Linear Regression",
+  "trained_on": "2026-11-26T02:13:57.704824+00:00",
+  "model_file": "model.joblib",
+  "model_sha256": "50c8b1e49f2fbc68615ee56f82ceb235271a4ccf3a8ea6b960cd51e4e255b7ca",
+  "metrics_file": "metrics.json",
+  "metrics_sha256": "fed96815b0106aa812d7762dada1ad8c2e8c1d99a5dbeb78dd7f6078ee516125",
+  "metrics_hash_mode": "utf8-lf-v1",
+  "metrics_scope": "synthetic_protocol_dry_run",
+  "selection": {
+    "selected": "Linear Regression",
+    "ranking": [
+      "Linear Regression",
+      "Hist Gradient Boosting",
+      "Random Forest"
+    ],
+    "rule": "RMSE validasi terkecil di antara model terlatih; tie dipecah MAE lalu nama",
+    "beats_naive_on_validation": false,
+    "cv_strategy": "respondent_group_kfold_non_chronological_short_calendar"
+  },
+  "sample_sizes": {
+    "profiles": 19,
+    "daily_records": 570,
+    "complete_windows": 323,
+    "train_windows": 60,
+    "test_windows": 7,
+    "train_ids": 12,
+    "test_ids": 7
+  },
+  "target_approval": {
+    "approved": false,
+    "note": "Belum ada catatan persetujuan final dosen."
+  },
+  "release_status": "candidate",
+  "feature_ranges": {
+    "past_7d_sbp": {
+      "min": 110.60714285714286,
+      "max": 136.67857142857142
+    },
+    "past_7d_dbp": {
+      "min": 68.60714285714286,
+      "max": 81.64285714285714
+    },
+    "past_7d_sbp_std": {
+      "min": 1.179112429944227,
+      "max": 5.4358503831282095
+    },
+    "age": {
+      "min": 20.0,
+      "max": 59.0
+    },
+    "bmi": {
+      "min": 19.408,
+      "max": 32.49
+    },
+    "past_7d_activity": {
+      "min": 24.285714285714285,
+      "max": 81.42857142857143
+    },
+    "past_7d_sleep": {
+      "min": 6.052428571428571,
+      "max": 7.721428571428572
+    },
+    "past_7d_stress": {
+      "min": 2.0,
+      "max": 3.4285714285714284
+    }
+  },
+  "limitations": [
+    "Kalender training belum cukup panjang untuk inner CV kronologis murni; inner validation menggunakan GroupKFold berbasis responden (kalender fit/val dapat beririsan).",
+    "Ukuran test utama kecil (7 origin dari 7 ID); metrik test bersifat tidak stabil dan bukan bukti generalisasi klinis.",
+    "Dataset berstatus DATA SINTETIS / SIMULASI; tidak boleh digunakan untuk klaim penelitian aktual."
+  ],
+  "versions": {
+    "python": "3.13.5",
+    "numpy": "2.5.4",
+    "pandas": "3.1.0",
+    "sklearn": "1.9.1",
+    "joblib": "1.6.0"
+  }
+}
