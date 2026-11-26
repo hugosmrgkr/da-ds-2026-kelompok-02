@@ -3,11 +3,11 @@ import React from 'react';
 import { whole } from '../../lib/api';
 
 const fields = [
-  { key: 'missing_sleep_hours', label: ['Durasi', 'Tidur'] },
-  { key: 'missing_sitting', label: ['Durasi', 'Duduk'] },
-  { key: 'missing_stress', label: ['Stres'] },
-  { key: 'missing_activity_minutes', label: ['Durasi', 'Aktivitas'] },
-  { key: 'missing_smoke_count', label: ['Jumlah', 'Merokok'] }
+  { key: 'missing_sleep_hours', label: 'Durasi tidur' },
+  { key: 'missing_sitting', label: 'Durasi duduk' },
+  { key: 'missing_stress', label: 'Stres' },
+  { key: 'missing_activity_minutes', label: 'Durasi aktivitas' },
+  { key: 'missing_smoke_count', label: 'Jumlah merokok' }
 ];
 
 const getCount = value => {
@@ -29,6 +29,13 @@ function getAxisStep(max) {
   return nice * magnitude;
 }
 
+function formatPercentage(value) {
+  return `${value.toLocaleString('id-ID', {
+    minimumFractionDigits: 1,
+    maximumFractionDigits: 1
+  })}%`;
+}
+
 export default function QualityOverview({ quality }) {
   const q = quality || {};
 
@@ -37,10 +44,6 @@ export default function QualityOverview({ quality }) {
   const validSessions = getCount(q.valid_sessions);
   const incompleteSessions = getCount(q.incomplete_sessions);
   const pendingSessions = getCount(q.pending_review_sessions);
-
-  const validPercentage = totalSessions > 0
-    ? Math.min(100, validSessions / totalSessions * 100)
-    : 0;
 
   const chartData = fields.map(field => {
     const value = getCount(q[field.key]);
@@ -67,18 +70,17 @@ export default function QualityOverview({ quality }) {
     (_, index) => index * step
   );
 
-  // Ukuran grafik
+  // Pengaturan ukuran horizontal bar chart
   const width = 900;
-  const plotLeft = 85;
-  const plotRight = 30;
-  const plotTop = 40;
-  const plotHeight = 275;
-  const plotWidth = width - plotLeft - plotRight;
-  const plotBottom = plotTop + plotHeight;
-  const slotWidth = plotWidth / chartData.length;
-  const barWidth = Math.min(76, slotWidth * 0.55);
+  const height = 290;
 
-  const height = 455;
+  const plotLeft = 190;
+  const plotRight = 72;
+  const plotTop = 20;
+  const rowHeight = 40;
+  const plotHeight = chartData.length * rowHeight;
+  const plotBottom = plotTop + plotHeight;
+  const plotWidth = width - plotLeft - plotRight;
 
   return (
     <section style={{
@@ -88,118 +90,187 @@ export default function QualityOverview({ quality }) {
       padding: 20,
       marginBottom: 16
     }}>
-      <h3 style={{ marginTop: 0, marginBottom: 6 }}>
+
+      <h3 style={{
+        marginTop: 0,
+        marginBottom: 6
+      }}>
         Ringkasan Validitas dan Kelengkapan Data
       </h3>
 
-      <p style={{ color: '#64748b', fontSize: 13 }}>
+      <p style={{
+        color: '#64748b',
+        fontSize: 13,
+        marginTop: 0
+      }}>
         Hasil pemeriksaan mengikuti filter data yang sedang digunakan.
       </p>
 
-      {/* STATUS VALIDASI TEKANAN DARAH */}
-      <div style={{ marginTop: 20 }}>
-        <strong>Status validasi pengukuran tekanan darah</strong>
+      {/* A. VALIDITAS SESI PENGUKURAN */}
+      <div style={{ marginTop: 22 }}>
 
-        {totalSessions === 0 ? (
-          <p style={{ color: '#64748b', fontSize: 13 }}>
-            Belum ada sesi pada filter ini.
-          </p>
-        ) : (
-          <>
+        <strong>A. Validitas Sesi Pengukuran</strong>
+
+        <p style={{
+          color: '#64748b',
+          fontSize: 13,
+          marginTop: 5,
+          marginBottom: 14
+        }}>
+          Ringkasan kondisi sesi pengukuran berdasarkan filter aktif.
+        </p>
+
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))',
+          gap: 12
+        }}>
+
+          {/* Sesi Valid */}
+          <div style={{
+            background: '#e6f3eb',
+            borderRadius: 10,
+            padding: 12
+          }}>
             <div style={{
-              height: 14,
-              background: '#e5eaf1',
-              borderRadius: 10,
-              overflow: 'hidden',
-              marginTop: 12
+              color: '#087b3d',
+              fontSize: 25,
+              fontWeight: 600
             }}>
-              <div style={{
-                width: `${validPercentage}%`,
-                height: '100%',
-                background: '#27966b'
-              }} />
+              {whole(validSessions)}
             </div>
 
             <div style={{
-              display: 'flex',
-              flexWrap: 'wrap',
-              gap: 16,
-              marginTop: 10,
-              fontSize: 13
+              color: '#52647a',
+              fontSize: 13,
+              marginTop: 3
             }}>
-              <span style={{ color: '#27966b' }}>
-                ● Valid: <strong>{whole(validSessions)}</strong>
-              </span>
+              Sesi valid
+            </div>
+          </div>
 
-              <span style={{ color: '#64748b' }}>
-                ● Belum masuk hitungan valid:{' '}
-                <strong>{whole(incompleteSessions)}</strong>
-              </span>
+          {/* Incomplete */}
+          <div style={{
+            borderRadius: 10,
+            padding: 12
+          }}>
+            <div style={{
+              color: '#1e293b',
+              fontSize: 25,
+              fontWeight: 600
+            }}>
+              {whole(incompleteSessions)}
             </div>
 
-            <p style={{ fontSize: 12, color: '#64748b' }}>
-              Sesi pending review: {whole(pendingSessions)}.
-              Sesi yang menunggu pemeriksaan ditampilkan terpisah.
-            </p>
-          </>
-        )}
-      </div>
+            <div style={{
+              color: '#64748b',
+              fontSize: 13,
+              marginTop: 3
+            }}>
+              Incomplete
+            </div>
+          </div>
 
-      {/* VERTICAL BAR CHART */}
-      <div style={{
-        borderTop: '1px solid #e5eaf1',
-        marginTop: 20,
-        paddingTop: 18
-      }}>
-        <strong>Kelengkapan Catatan Harian</strong>
+          {/* Pending Review */}
+          <div style={{
+            borderRadius: 10,
+            padding: 12
+          }}>
+            <div style={{
+              color: '#1e293b',
+              fontSize: 25,
+              fontWeight: 600
+            }}>
+              {whole(pendingSessions)}
+            </div>
+
+            <div style={{
+              color: '#64748b',
+              fontSize: 13,
+              marginTop: 3
+            }}>
+              Pending review
+            </div>
+          </div>
+
+        </div>
 
         <p style={{
           color: '#64748b',
           fontSize: 12,
-          marginTop: 5
+          marginTop: 12,
+          marginBottom: 0
+        }}>
+          Total sesi: {whole(totalSessions)}.
+          Status validitas mengikuti hasil pemeriksaan backend.
+        </p>
+      </div>
+
+      {/* B. KELENGKAPAN CATATAN HARIAN */}
+      <div style={{
+        borderTop: '1px solid #e5eaf1',
+        marginTop: 22,
+        paddingTop: 18
+      }}>
+
+        <strong>B. Kelengkapan Catatan Harian</strong>
+
+        <p style={{
+          color: '#64748b',
+          fontSize: 12,
+          marginTop: 5,
+          marginBottom: 8
         }}>
           Jumlah nilai kosong berdasarkan variabel.
           Total catatan harian: {whole(daily)}.
         </p>
 
         {daily === 0 ? (
-          <p style={{ color: '#64748b', fontSize: 13 }}>
+          <p style={{
+            color: '#64748b',
+            fontSize: 13
+          }}>
             Belum ada catatan harian pada filter ini.
           </p>
         ) : (
-          <div style={{ width: '100%', overflowX: 'auto' }}>
+          <div style={{
+            width: '100%',
+            overflowX: 'auto'
+          }}>
+
             <svg
               viewBox={`0 0 ${width} ${height}`}
               width="100%"
               height="auto"
               role="img"
-              aria-label="Diagram batang vertikal jumlah nilai kosong berdasarkan variabel"
+              aria-label="Diagram batang horizontal jumlah nilai kosong berdasarkan variabel"
               style={{
                 display: 'block',
                 minWidth: 560,
                 fontFamily: 'Arial, sans-serif'
               }}
             >
-              {/* Garis grid dan sumbu Y */}
+
+              {/* Garis grid dan sumbu horizontal */}
               {ticks.map(tick => {
-                const y = plotBottom -
-                  (tick / axisMax) * plotHeight;
+                const x = plotLeft +
+                  (tick / axisMax) * plotWidth;
 
                 return (
                   <g key={tick}>
                     <line
-                      x1={plotLeft}
-                      y1={y}
-                      x2={width - plotRight}
-                      y2={y}
-                      stroke="#e5e7eb"
+                      x1={x}
+                      y1={plotTop}
+                      x2={x}
+                      y2={plotBottom}
+                      stroke="#e5eaf1"
                       strokeWidth="1"
                     />
 
                     <text
-                      x={plotLeft - 12}
-                      y={y + 4}
-                      textAnchor="end"
+                      x={x}
+                      y={plotBottom + 20}
+                      textAnchor="middle"
                       fill="#64748b"
                       fontSize="12"
                     >
@@ -209,100 +280,95 @@ export default function QualityOverview({ quality }) {
                 );
               })}
 
-              {/* Batang dan label variabel */}
+              {/* Batang horizontal dan label */}
               {chartData.map((item, index) => {
-                const centerX =
-                  plotLeft + (index + 0.5) * slotWidth;
+                const centerY =
+                  plotTop + index * rowHeight + rowHeight / 2;
 
-                const barHeight =
-                  (item.value / axisMax) * plotHeight;
+                const barWidth =
+                  (item.value / axisMax) * plotWidth;
 
-                const barY = plotBottom - barHeight;
+                const barEnd = plotLeft + barWidth;
+
+                const valueLabel =
+                  `${whole(item.value)} (${formatPercentage(item.percentage)})`;
+
+                const labelAtEnd = barEnd + 8;
+                const useEndAnchor =
+                  labelAtEnd + 100 > width - 8;
 
                 return (
-                  <g key={item.label.join('-')}>
+                  <g key={item.label}>
+
+                    {/* Label variabel */}
+                    <text
+                      x={plotLeft - 12}
+                      y={centerY + 4}
+                      textAnchor="end"
+                      fill="#334155"
+                      fontSize="13"
+                    >
+                      {item.label}
+                    </text>
+
                     {/* Batang */}
                     <rect
-                      x={centerX - barWidth / 2}
-                      y={barY}
+                      x={plotLeft}
+                      y={centerY - 14}
                       width={barWidth}
-                      height={barHeight}
-                      fill="#397bc5"
-                      rx="2"
-                    />
+                      height={28}
+                      fill="#24418F"
+                      rx="1"
+                    >
+                      <title>{valueLabel}</title>
+                    </rect>
 
-                    {/* Angka dan persentase */}
+                    {/* Jumlah dan persentase */}
                     <text
-                      x={centerX}
-                      y={Math.max(plotTop - 8, barY - 10)}
-                      textAnchor="middle"
+                      x={useEndAnchor ? barEnd - 8 : labelAtEnd}
+                      y={centerY + 4}
+                      textAnchor={useEndAnchor ? 'end' : 'start'}
                       fill="#1e293b"
                       fontSize="12"
-                      fontWeight="600"
                     >
-                      {whole(item.value)}
+                      {valueLabel}
                     </text>
 
-                    {/* Label sumbu X */}
-                    <text
-                      x={centerX}
-                      y={plotBottom + 23}
-                      textAnchor="middle"
-                      fill="#334155"
-                      fontSize="12"
-                    >
-                      {item.label.map((line, lineIndex) => (
-                        <tspan
-                          key={lineIndex}
-                          x={centerX}
-                          dy={lineIndex === 0 ? 0 : 16}
-                        >
-                          {line}
-                        </tspan>
-                      ))}
-                    </text>
-
-                    {/* Persentase di bawah label */}
-                    <text
-                      x={centerX}
-                      y={plotBottom + 62}
-                      textAnchor="middle"
-                      fill="#64748b"
-                      fontSize="11"
-                    >
-                      {item.percentage.toFixed(1)}%
-                    </text>
                   </g>
                 );
               })}
 
-              {/* Judul sumbu Y */}
+              {/* Judul sumbu X */}
               <text
-                transform={`translate(19 ${plotTop + plotHeight / 2}) rotate(-90)`}
+                x={plotLeft + plotWidth / 2}
+                y={height - 8}
                 textAnchor="middle"
                 fill="#475569"
                 fontSize="13"
               >
-                Jumlah Nilai Kosong
+                Jumlah nilai kosong
               </text>
+
             </svg>
           </div>
         )}
       </div>
 
+      {/* CATATAN */}
       <div style={{
-        background: '#f3f6fa',
-        borderRadius: 8,
-        padding: 12,
+        borderTop: '1px solid #e5eaf1',
+        paddingTop: 12,
         marginTop: 14,
         fontSize: 12,
         color: '#52647a',
         lineHeight: 1.6
       }}>
-        Catatan: nilai kosong tidak selalu berarti kesalahan pengisian.
-        Khusus jumlah merokok, periksa apakah responden memang tidak
-        merokok sebelum menyimpulkan bahwa datanya hilang.
+        Catatan: nilai kosong tidak selalu menunjukkan kesalahan
+        pengisian. Khusus jumlah merokok, perlu diperiksa apakah
+        responden memang tidak merokok sebelum menyimpulkan
+        bahwa datanya hilang.
       </div>
+
     </section>
   );
 }
