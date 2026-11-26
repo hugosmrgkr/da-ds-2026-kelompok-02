@@ -1,0 +1,10 @@
+{
+  "eligible": false,
+  "source_kind": "actual",
+  "reasons": [
+    "actual_export_files_missing"
+  ],
+  "limitations": [
+    "Berkas ekspor sumber (Data_Responden_Aktual.csv, Data_Harian_Aktual.csv) belum tersedia."
+  ]
+}

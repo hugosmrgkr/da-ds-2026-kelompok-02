@@ -24,7 +24,7 @@ export default function App(){
   const [comparison,setComparison]=useState(null), [comparisonLoading,setComparisonLoading]=useState(false);
   const filterKey=JSON.stringify(filters);
   const baselinePage=['Prediksi Tekanan Darah','Evaluasi Model'].includes(page);
-  const independent=baselinePage;
+  const independent=baselinePage || page==='Kelola Data';
   const reload=()=>setRevision(value=>value+1);
   const crossFilter=values=>setFilters(old=>({...old,...values,...('province' in values&&!('city' in values)?{city:''}:{})}));
   const go=name=>{setPage(name);window.location.hash=encodeURIComponent(name);window.scrollTo({top:0,behavior:'smooth'})};

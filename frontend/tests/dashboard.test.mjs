@@ -37,7 +37,7 @@ const visible=node=>typeof node==='string'?node:(node.children||[]).map(visible)
 const button=label=>renderer.root.findAllByType('button').find(node=>visible(node)===label);
 const text=()=>JSON.stringify(renderer.toJSON());
 async function settle(){for(let n=0;n<3;n++)await act(async()=>{await new Promise(resolve=>setImmediate(resolve))});}
-async function mount({empty=false,failAnalytics=false,page='Dashboard',dataOverride=null,comparisonData=comparison,requireToken=false}={}){
+async function mount({empty=false,failAnalytics=false,page='Dashboard',dataOverride=null,comparisonData=comparison,requireToken=false,readinessData={}}={}){
   requests=[];const store=new Map();comparisonOverride=comparisonData;
   global.window={sessionStorage:{getItem:key=>store.has(key)?store.get(key):null,setItem:(key,value)=>store.set(key,value),removeItem:key=>store.delete(key)},location:{hash:'#'+encodeURIComponent(page)},addEventListener(){},removeEventListener(){},scrollTo(){}};
   global.document={createElement:()=>({click(){},remove(){}}),body:{appendChild(){}}};
@@ -48,6 +48,7 @@ async function mount({empty=false,failAnalytics=false,page='Dashboard',dataOverr
     const failure=failAnalytics&&url.startsWith('/api/analytics');
     return {ok:!failure,status:failure?503:200,blob:async()=>new Blob(['csv']),json:async()=>failure?{detail:'Warehouse tidak dapat dibaca'}:
       url==='/api/meta'?{...meta,warehouse_empty:empty,participants:empty?0:23,message:empty?'Warehouse belum berisi data. Jalankan ETL manual.':meta.message}:
+      url==='/api/data-readiness'?readinessData:
       url==='/api/model/baseline'?model:url==='/api/model/comparison'?comparisonOverride:url.startsWith('/api/model/predict')?prediction:empty?{...payload,empty:true,kpis:{},trend:[]}:dataOverride||payload};
   };
   await act(async()=>{renderer=TestRenderer.create(React.createElement(App))});
@@ -90,6 +91,23 @@ test('analytics failure remains visible while evaluation and management can stil
   try{await mount({failAnalytics:true});assert.match(text(),/Gagal membaca data/);assert.equal(renderer.root.findAllByType('plot-probe').length,0);
     await act(async()=>button('Evaluasi Model').props.onClick());await settle();assert.match(text(),/Tabel metrik perbandingan/);
     await act(async()=>button('Kelola Data').props.onClick());await settle();assert.match(text(),/Sumber aktif/);assert.match(text(),/Kualitas pilihan belum dapat dibaca/);
+    assert.match(text(),/Kesiapan data dan analisis/);
+    assert.ok(requests.some(row=>row.url==='/api/data-readiness'));
+    for(const name of ['Profil','Catatan harian','Sesi tensi'])assert.equal(button(name).props.disabled,true);
+  }finally{await dispose();}
+});
+
+test('management labels distinct respondents separately from training windows when analytics fails',async()=>{
+  try{
+    await mount({page:'Kelola Data',failAnalytics:true,readinessData:{
+      label:'DATA SINTETIS / SIMULASI',ml_status:'synthetic_technical_check_only',
+      history_7d_respondents:17,training_windows_7d:51,
+    }});
+    const metric=label=>renderer.root.findAllByType('span').find(node=>visible(node)===label).parent.findByType('b');
+    assert.equal(visible(metric('Responden dengan histori 7 hari')),'17');
+    assert.equal(visible(metric('Window training 7+7 hari')),'51');
+    assert.doesNotMatch(text(),/Window histori 7 hari/);
+    assert.match(text(),/Gagal membaca data/);
   }finally{await dispose();}
 });
 
@@ -137,7 +155,7 @@ test('risk page explains smoking, medication, nulls and observed sample sizes',a
     await mount({page:'Analisis Faktor Risiko'});
     assert.match(text(),/Status merokok dan SBP harian/);
     assert.match(text(),/Kepatuhan obat dan SBP harian/);
-    assert.match(text(),/Tidak menggunakan obat tidak sama dengan tidak patuh/);
+    assert.match(text(),/Tidak menggunakan obat berbeda makna dengan tidak patuh/);
     assert.match(text(),/Belum ada nilai valid untuk grafik/);
     assert.match(text(),/Pearson r/);
   }finally{await dispose();}

@@ -1,0 +1,51 @@
+{
+  "eligible": true,
+  "source_kind": "synthetic",
+  "reasons": [],
+  "thresholds": {
+    "min_profiles": 8,
+    "min_total_respondents": 8,
+    "min_train_ids": 5,
+    "min_test_ids": 2,
+    "min_train_windows": 15,
+    "min_test_windows": 2,
+    "min_calendar_days": 21
+  },
+  "readiness": {
+    "source_kind": "synthetic",
+    "label": "DATA SINTETIS / SIMULASI",
+    "profiles": 19,
+    "daily_records": 570,
+    "session_records": 1140,
+    "valid_sessions": 1140,
+    "date_count": 30,
+    "min_date": "2026-09-01",
+    "max_date": "2026-09-30",
+    "profile_quarantined": 0,
+    "daily_quarantined": 0,
+    "issue_count": 0,
+    "unresolved_session_reviews": 0,
+    "sleep_missing": 6,
+    "sitting_missing": 3,
+    "training_target": "future_7d_mean_sbp",
+    "history_7d_respondents": 19,
+    "training_windows_7d": 323,
+    "training_window_respondents": 19,
+    "ml_status": "synthetic_technical_check_only",
+    "ml_note": "Jumlah window teknis; belum membuktikan kelayakan ilmiah atau persetujuan target."
+  },
+  "window_summary": {
+    "complete_windows": 323,
+    "train_windows": 60,
+    "test_windows": 7,
+    "train_ids": 12,
+    "test_ids": 7,
+    "cutoff": "2026-09-18",
+    "chronological_inner_cv_supported": false
+  },
+  "limitations": [
+    "Kalender training belum cukup panjang untuk inner CV kronologis murni; inner validation menggunakan GroupKFold berbasis responden (kalender fit/val dapat beririsan).",
+    "Ukuran test utama kecil (7 origin dari 7 ID); metrik test bersifat tidak stabil dan bukan bukti generalisasi klinis.",
+    "Dataset berstatus DATA SINTETIS / SIMULASI; tidak boleh digunakan untuk klaim penelitian aktual."
+  ]
+}
