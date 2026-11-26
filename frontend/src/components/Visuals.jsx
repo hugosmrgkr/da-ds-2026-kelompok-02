@@ -1,7 +1,8 @@
 import React from 'react';
 import {PlotlyChart,Empty} from './Common';
 import {fmt} from '../lib/api';
-const BLUE='#2789ed',ORANGE='#c58b36',TEAL='#397e8b';
+import {CHART} from '../lib/chartTheme';
+const BLUE=CHART.blue,ORANGE=CHART.amber,TEAL=CHART.teal;
 const palette=[BLUE,TEAL,ORANGE,'#8664b1','#ca657f','#58a3bc'];
 const sessions=['Pagi','Malam'];
 const color={Pagi:BLUE,Malam:'#173b65'};

@@ -1,69 +1,85 @@
 import React from 'react';
+import {CalendarDays,MapPin,Scale,UsersRound} from 'lucide-react';
 import {PlotlyChart} from '../Common';
+import {fmt,whole} from '../../lib/api';
+import {CHART,CHART_TEXT,TONES,GENDER_COLORS,CATEGORICAL,FONT_FAMILY,baseHoverLabel,axisTitle,mixColor} from '../../lib/chartTheme';
 
-/* Palet tunggal untuk halaman Data Partisipan: satu warna per jenis informasi
-   agar pembaca mengenali topik grafik tanpa membaca legenda. */
-export const TONE={
- blue:{base:'#2563eb',dark:'#1e3a8a',light:'#bfdbfe'},
- teal:{base:'#0d9488',dark:'#134e4a',light:'#99f6e4'},
- amber:{base:'#d97706',dark:'#92400e',light:'#fde68a'},
- violet:{base:'#7c3aed',dark:'#4c1d95',light:'#ddd6fe'},
- rose:{base:'#e11d48',dark:'#881337',light:'#fecdd3'},
-};
-export const GENDER_COLORS={'Laki-laki':'#2563eb','Perempuan':'#ec4899'};
-const FALLBACK=['#2563eb','#0d9488','#d97706','#7c3aed','#e11d48','#0ea5e9'];
-const UNKNOWN='#94a3b8';
+/* Warna grafik berasal dari lib/chartTheme.js (palet yang sama dengan Dashboard,
+   Analisis Faktor Risiko, dan Tren). Nada dipilih per jenis informasi:
+   biru = atribut responden, teal = lokasi dan BMI, amber = pekerjaan. */
+export const TONE=TONES;
+
+/* Tinggi area grafik (px). Setiap baris kartu memakai tinggi yang sama agar
+   judul, grafik, dan deskripsi sejajar; batang tidak diperkecil demi itu. */
+export const PLOT_MIN=340;
+const BAR_SLOT=34,BAR_CHROME=96,BAR_MAX=34,SLOT_MAX=56;
 const pick=event=>event?.points?.[0];
-const mix=(a,b,t)=>{const p=h=>[1,3,5].map(i=>parseInt(h.slice(i,i+2),16));const [x,y]=[p(a),p(b)];
- return '#'+x.map((v,i)=>Math.round(v+(y[i]-v)*t).toString(16).padStart(2,'0')).join('')};
+
+/* Jumlah baris kategori yang akan digambar (termasuk baris "Lainnya"). */
+export const rankSlots=(rows=[],limit=12)=>{const n=rows.filter(r=>Number.isFinite(r.n)).length;return n>limit?limit+1:n};
+/* Tinggi grafik batang yang cukup untuk jumlah baris terbanyak pada satu baris kartu. */
+export const rankHeight=(...slots)=>Math.max(PLOT_MIN,Math.max(0,...slots)*BAR_SLOT+BAR_CHROME);
 
 /* Batang horizontal berurutan dari terbanyak; warna memudar mengikuti peringkat. */
-export function RankBars({rows=[],tone='blue',unit='responden',onSelect,limit=12}){
+export function RankBars({rows=[],tone='blue',unit='responden',onSelect,limit=12,height}){
  const t=TONE[tone]||TONE.blue;
  const sorted=[...rows].filter(r=>Number.isFinite(r.n)).sort((a,b)=>b.n-a.n);
  const shown=sorted.slice(0,limit),hidden=sorted.slice(limit).reduce((s,r)=>s+r.n,0);
  const data=hidden>0?[...shown,{category:`Lainnya (${sorted.length-limit} kategori)`,n:hidden,other:true}]:shown;
- const colors=data.map((r,i)=>r.other||r.category==='Tidak diketahui'?UNKNOWN:mix(t.dark,t.base,shown.length>1?Math.min(1,i/(shown.length-1))*.85:0));
- return <PlotlyChart height={Math.max(280,data.length*34+80)}
+ const colors=data.map((r,i)=>r.other||r.category==='Tidak diketahui'?CHART.neutral:mixColor(t.dark,t.base,shown.length>1?Math.min(1,i/(shown.length-1))*.85:0));
+ const h=height||rankHeight(data.length);
+ /* Bila tinggi bersama lebih besar dari kebutuhan, batang dikelompokkan di tengah dengan jarak
+    antarbaris dibatasi (SLOT_MAX), bukan direntangkan; tebal batang tetap seragam di semua grafik. */
+ const inner=h-BAR_CHROME+28,n=Math.max(1,data.length);
+ const eff=Math.max(n,inner/SLOT_MAX),pad=(eff-n)/2;
+ const bargap=Math.min(.82,Math.max(.28,1-BAR_MAX/(inner/eff)));
+ return <PlotlyChart height={h}
   data={[{type:'bar',orientation:'h',x:data.map(r=>r.n),y:data.map(r=>r.category),marker:{color:colors,line:{color:'white',width:1}},
-   text:data.map(r=>r.n),textposition:'outside',cliponaxis:false,textfont:{color:'#334155',size:12},
+   text:data.map(r=>whole(r.n)),textposition:'outside',cliponaxis:false,textfont:{color:CHART.ink,size:CHART_TEXT.value,family:FONT_FAMILY},
    hovertemplate:'<b>%{y}</b><br>%{x} '+unit+'<extra></extra>'}]}
   onClick={onSelect?e=>{const p=pick(e);if(p?.y&&p.y!=='Tidak diketahui'&&!String(p.y).startsWith('Lainnya'))onSelect(p.y)}:undefined}
-  layout={{margin:{l:20,r:44,t:10,b:42},showlegend:false,bargap:.28,
-   xaxis:{title:`Jumlah ${unit}`,rangemode:'tozero',zeroline:false,gridcolor:'#eef2f7'},
-   yaxis:{autorange:'reversed',automargin:true,tickfont:{size:12,color:'#1e293b'}}}}/>;
+  layout={{margin:{l:16,r:52,t:12,b:60},showlegend:false,bargap,hoverlabel:baseHoverLabel,
+   font:{family:FONT_FAMILY,size:CHART_TEXT.tick,color:CHART.muted},
+   xaxis:{title:axisTitle(`Jumlah ${unit}`),rangemode:'tozero',zeroline:false,gridcolor:CHART.grid,tickfont:{size:CHART_TEXT.tick}},
+   yaxis:{range:[n-.5+pad,-.5-pad],automargin:true,ticks:'outside',ticklen:8,tickcolor:'rgba(0,0,0,0)',tickfont:{size:CHART_TEXT.label,color:CHART.ink}}}}/>;
 }
 
 /* Donut dengan total di tengah; warna tetap per kategori bila disediakan. */
-export function ShareDonut({rows=[],unit='responden',colors=GENDER_COLORS,onSelect}){
+export function ShareDonut({rows=[],unit='responden',colors=GENDER_COLORS,onSelect,height=PLOT_MIN}){
  const valid=rows.filter(r=>Number.isFinite(r.n)&&r.n>0),total=valid.reduce((s,r)=>s+r.n,0);
- return <PlotlyChart height={320}
+ return <PlotlyChart height={height}
   data={[{type:'pie',labels:valid.map(r=>r.category),values:valid.map(r=>r.n),hole:.62,sort:false,direction:'clockwise',
-   marker:{colors:valid.map((r,i)=>colors[r.category]||FALLBACK[i%FALLBACK.length]),line:{color:'#ffffff',width:3}},
-   textinfo:'percent',textfont:{color:'#fff',size:13},insidetextorientation:'horizontal',
+   marker:{colors:valid.map((r,i)=>r.category==='Tidak diketahui'?CHART.neutral:colors[r.category]||CATEGORICAL[i%CATEGORICAL.length]),line:{color:'#ffffff',width:3}},
+   textinfo:'percent',textfont:{color:'#fff',size:14,family:FONT_FAMILY},insidetextorientation:'horizontal',
    hovertemplate:'<b>%{label}</b><br>%{value} '+unit+' (%{percent})<extra></extra>'}]}
   onClick={onSelect?e=>{const p=pick(e);if(p?.label&&p.label!=='Tidak diketahui')onSelect(p.label)}:undefined}
-  layout={{showlegend:true,legend:{orientation:'h',x:.5,xanchor:'center',y:-.04,font:{size:12}},margin:{l:12,r:12,t:12,b:48},
-   annotations:[{text:`<b style="font-size:26px;color:#0f172a">${total.toLocaleString('id-ID')}</b><br><span style="color:#64748b">${unit}</span>`,
-    x:.5,y:.5,showarrow:false,font:{size:12}}]}}/>;
+  layout={{showlegend:true,legend:{orientation:'h',x:.5,xanchor:'center',y:-.02,yanchor:'top',font:{size:CHART_TEXT.legend,color:CHART.ink}},
+   margin:{l:16,r:16,t:12,b:56},hoverlabel:baseHoverLabel,font:{family:FONT_FAMILY,size:CHART_TEXT.tick,color:CHART.muted},
+   annotations:[{text:`<b style="font-size:28px;color:${CHART.ink}">${total.toLocaleString('id-ID')}</b><br><span style="color:${CHART.muted}">${unit}</span>`,
+    x:.5,y:.5,showarrow:false,font:{size:CHART_TEXT.label,family:FONT_FAMILY}}]}}/>;
 }
 
 /* Histogram dengan garis rerata dan median agar bentuk sebaran langsung terbaca. */
-export function DistributionHistogram({rows=[],field,label,unit,tone='blue'}){
+export function DistributionHistogram({rows=[],field,label,unit,tone='blue',height=PLOT_MIN}){
  const t=TONE[tone]||TONE.blue;
  const values=rows.map(r=>r[field]).filter(Number.isFinite).sort((a,b)=>a-b);
  const mean=values.length?values.reduce((s,v)=>s+v,0)/values.length:null;
  const median=values.length?(values.length%2?values[(values.length-1)/2]:(values[values.length/2-1]+values[values.length/2])/2):null;
- const line=(x,color,dash,text,y)=>({x,text,color,dash,y});
- const marks=mean==null?[]:[line(mean,t.dark,'solid',`Rerata ${mean.toFixed(1)}`,1.0),line(median,'#64748b','dot',`Median ${median.toFixed(1)}`,.88)];
- return <PlotlyChart
-  data={[{type:'histogram',x:values,marker:{color:t.base,opacity:.88,line:{color:'white',width:1.5}},
+ const mid=values.length?(values[0]+values[values.length-1])/2:0;
+ /* Label garis diletakkan di sisi yang lapang agar tidak terpotong di tepi grafik. */
+ const mark=(x,color,dash,text,y)=>({x,text,color,dash,y,right:x>mid});
+ const marks=mean==null?[]:[mark(mean,t.dark,'solid',`Rerata ${fmt(mean,1)}`,.98),mark(median,CHART.muted,'dot',`Median ${fmt(median,1)}`,.84)];
+ return <PlotlyChart height={height}
+  data={[{type:'histogram',x:values,marker:{color:t.base,opacity:.9,line:{color:'white',width:1.5}},
    hovertemplate:label+': %{x}<br>%{y} responden<extra></extra>'}]}
-  layout={{showlegend:false,bargap:.06,margin:{l:52,r:24,t:30,b:58},
-   xaxis:{title:`${label} (${unit})`,zeroline:false},yaxis:{title:'Jumlah responden',rangemode:'tozero',zeroline:false},
+  layout={{showlegend:false,bargap:.06,margin:{l:64,r:24,t:16,b:64},hoverlabel:baseHoverLabel,
+   font:{family:FONT_FAMILY,size:CHART_TEXT.tick,color:CHART.muted},
+   xaxis:{title:axisTitle(`${label} (${unit})`),zeroline:false,tickfont:{size:CHART_TEXT.tick}},
+   yaxis:{title:axisTitle('Jumlah responden'),rangemode:'tozero',zeroline:false,tickfont:{size:CHART_TEXT.tick}},
    shapes:marks.map(m=>({type:'line',xref:'x',yref:'paper',x0:m.x,x1:m.x,y0:0,y1:1,line:{color:m.color,width:2,dash:m.dash}})),
-   annotations:marks.map(m=>({xref:'x',yref:'paper',x:m.x,y:m.y,text:m.text,showarrow:false,xanchor:'left',xshift:6,font:{size:11,color:m.color},
-    bgcolor:'rgba(255,255,255,.85)'}))}}/>;
+   annotations:marks.map(m=>({xref:'x',yref:'paper',x:m.x,y:m.y,text:m.text,showarrow:false,yanchor:'top',
+    xanchor:m.right?'right':'left',xshift:m.right?-8:8,font:{size:CHART_TEXT.annotation+1,color:m.color,family:FONT_FAMILY},
+    bgcolor:'rgba(255,255,255,.9)',borderpad:2}))}}/>;
 }
 
 /* Ringkasan angka di bagian atas halaman: hanya dihitung dari profil terfilter. */
@@ -72,15 +88,15 @@ export function ProfileStats({profiles=[],groups={}}){
  const age=mean('age'),bmi=mean('bmi');
  const places=name=>(groups[name]||[]).filter(r=>r.category&&r.category!=='Tidak diketahui').length;
  const items=[
-  ['Responden',profiles.length.toLocaleString('id-ID'),'ID unik pada filter global',TONE.blue.base],
-  ['Rerata usia',age==null?'—':age.toFixed(1)+' th','dari profil yang mengisi usia',TONE.violet.base],
-  ['Rerata BMI',bmi==null?'—':bmi.toFixed(1),'kg/m² · deskriptif, bukan diagnosis',TONE.teal.base],
-  ['Wilayah',`${places('province')} prov · ${places('city')} kab/kota`,'menurut jawaban formulir',TONE.amber.base],
+  {icon:UsersRound,label:'Responden',value:whole(profiles.length),unit:'ID',note:'ID unik pada filter global'},
+  {icon:CalendarDays,label:'Rerata usia',value:age==null?'—':fmt(age,1),unit:age==null?'':'tahun',note:'dari profil yang mengisi usia'},
+  {icon:Scale,label:'Rerata BMI',value:bmi==null?'—':fmt(bmi,1),unit:bmi==null?'':'kg/m²',note:'deskriptif, bukan diagnosis'},
+  {icon:MapPin,label:'Wilayah',value:<>{places('province')}<small>provinsi</small><span className="stat-sep" aria-hidden="true">·</span>{places('city')}<small>kab/kota</small></>,note:'menurut jawaban formulir'},
  ];
- return <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(190px,1fr))',gap:16,marginBottom:20}}>
-  {items.map(([title,value,note,color])=><div key={title} style={{background:'#fff',border:'1px solid #e1e7ef',borderTop:`4px solid ${color}`,borderRadius:12,padding:'14px 18px'}}>
-   <div style={{fontSize:12,fontWeight:600,color:'#64748b',textTransform:'uppercase',letterSpacing:.4}}>{title}</div>
-   <div style={{fontSize:26,fontWeight:700,color:'#0f172a',lineHeight:1.25,margin:'4px 0 2px'}}>{value}</div>
-   <div style={{fontSize:12,color:'#64748b'}}>{note}</div></div>)}
+ return <div className="stat-grid">
+  {items.map(({icon:Icon,label,value,unit,note})=><div key={label} className="stat-card">
+   <div className="stat-label"><Icon size={18} aria-hidden="true"/><span>{label}</span></div>
+   <div className="stat-value">{value}{unit&&<small>{unit}</small>}</div>
+   <div className="stat-note">{note}</div></div>)}
  </div>;
 }
