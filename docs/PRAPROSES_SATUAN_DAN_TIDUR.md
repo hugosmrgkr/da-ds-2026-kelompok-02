@@ -1,3 +1,30 @@
+# Praproses data AKTUAL (revisi 27 Nov 2026) — Makan/Tidak Makan, Makan Buah/Tidak Makan Buah, tidur dalam jam
+
+Keputusan tim (diminta pengguna proyek, 27 Nov 2026). Kode: `backend/app/survey_schema.py`
+(`parse_salty_binary`, `parse_fruit_binary`, `parse_value` jenis `sleep`). Berlaku hanya untuk data aktual;
+jalur sintetis tidak berubah.
+
+| Kolom (Form Harian) | Jawaban mentah di CSV | Hasil di database / dashboard |
+|---|---|---|
+| 21. Makanan asin/olahan (`salty_food`) | `Tidak sama sekali` | **Tidak Makan** |
+| | `1 kali`, `2 kali`, `3 kali atau lebih` | **Makan** |
+| 22. Buah (`fruit`) | `Tidak mengonsumsi buah`, kosong, 0, `-` | **Tidak Makan Buah** |
+| | `1 porsi`, `2 porsi`, `3 porsi atau lebih` | **Makan Buah** |
+| 20. Tidur (`sleep_hours`, satuan **jam**) | `6.5`, `7` (angka tanpa satuan = jam) | 6,5 / 7 jam |
+| | `7 jam 30 menit`, `420 menit` | 7,5 / 7 jam |
+| | `06:30`, teks bebas | NA + `sleep_semantics_unconfirmed` |
+
+Jawaban `Makan` / `Tidak Makan` / `Makan Buah` / `Tidak Makan Buah` (bila formulir direvisi) juga diterima apa adanya.
+Jawaban yang tidak dikenali tidak ditebak (NA + isu). Matikan perilaku tidur baru dengan
+`TOBA_SLEEP_EXPLICIT_UNITS=0` dan/atau `TOBA_SLEEP_BARE_NUMERIC_IS_HOURS=0`.
+Pada ekspor aktual saat ini: salty 405 Makan / 165 Tidak Makan; buah 407 Makan Buah / 163 Tidak Makan Buah;
+tidur 570/570 terisi (4,5–8,0 jam).
+
+**Tempat hasil terlihat di aplikasi:** Analisis Faktor Risiko (grafik asin/olahan, buah, tidur), Kelola Data
+(kelengkapan, "Tidur kosong"), `/api/data-readiness` dan data dictionary (kolom *Transformasi*), ekspor CSV "Catatan harian".
+
+---
+
 # Praproses satuan menit, tidur berunit eksplisit, dan ringkasan isu per kolom
 
 Catatan perubahan kecil pada praproses. Semua contoh jawaban di tes adalah **fixture sintetis**;

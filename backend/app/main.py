@@ -93,7 +93,7 @@ def get_data_readiness(db:Session=Depends(get_db)):
     if len(sessions):
         sessions=assessed_frame(sessions)
     result=build_readiness(profiles,sessions,daily,quality,source_kind)
-    result['access_restricted']=source_kind not in ('synthetic','empty')
+    result['access_restricted']=source_kind not in ('synthetic','empty') and not (source_kind=='actual' and security.actual_view_allowed())
     if result['access_restricted']:
         # Keep actual-data metadata aggregate-only; never return respondent-level data.
         result['message']='Sumber aktual: ringkasan agregat hanya tersedia bagi pengelola berwenang.'

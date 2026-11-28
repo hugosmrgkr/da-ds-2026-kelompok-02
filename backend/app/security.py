@@ -35,6 +35,15 @@ def auth_mode():
     return os.getenv('AUTH_MODE', 'off').lower()
 
 
+def actual_view_allowed():
+    """Izin eksplisit menampilkan sumber AKTUAL di dashboard (default: tertutup).
+
+    Diaktifkan lewat ALLOW_ACTUAL_DATA_VIEW=true di .env. Pada staging/production aplikasi
+    sudah menolak start tanpa AUTH_MODE=token (lihat validate_runtime_config).
+    """
+    return os.getenv('ALLOW_ACTUAL_DATA_VIEW', 'false').strip().lower() == 'true'
+
+
 def cors_origins():
     raw = os.getenv('CORS_ORIGINS')
     return [o.strip() for o in raw.split(',') if o.strip()] if raw else list(DEFAULT_ORIGINS)
