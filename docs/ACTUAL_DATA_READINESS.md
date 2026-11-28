@@ -2,15 +2,37 @@
 
 ## Status sumber
 
-Kontrak parser saat ini mengharapkan dua ekspor CSV terpisah:
-- Form Awal Responden: 24 kolom, urutan header eksplisit.
+Kontrak parser mengharapkan dua ekspor CSV terpisah:
+- Form Awal Responden: 24 kolom analitik, urutan header eksplisit.
 - Form Catatan Harian: 28 kolom, urutan header eksplisit.
 
-BOM, spasi, kapitalisasi, dan CRLF dinormalisasi saat pemeriksaan header. Kolom hilang,
-kolom tambahan, perubahan teks pertanyaan, atau perubahan urutan ditolak. Tidak ada
-pemetaan berdasarkan posisi yang ditebak. Karena ekspor aktual belum disertakan dalam
-checkout ini, kompatibilitas aktual **belum terverifikasi**. Jangan menyatakan dataset
-aktual telah lolos validasi sampai ekspor dari Google Forms diperiksa.
+BOM, spasi, kapitalisasi, dan CRLF dinormalisasi saat pemeriksaan header. Perubahan
+kolom/urutan tetap ditolak, kecuali variasi ekspor yang didokumentasikan secara eksplisit:
+kolom tambahan `Score` di ujung Form Awal diabaikan hanya jika 24 header sebelumnya
+cocok persis; perubahan redaksi pertanyaan buah/sayur yang telah diverifikasi diterima
+sebagai alias; dan variasi spasi pada kategori gender dinormalisasi. Jawaban multi-pilih
+dikenali berdasarkan label lengkap agar koma di dalam label tidak salah dipotong.
+
+### Verifikasi ekspor aktual yang diterima (27 November 2026)
+
+Dry-run terhadap dua file aktual yang diserahkan menghasilkan:
+- 19 profil diterima dari Form Awal.
+- 570 catatan harian diterima dari 19 ID yang seluruhnya cocok dengan Form Awal.
+- Cakupan 30 tanggal, 28 Oktober–26 November 2026.
+- 1.140 sesi diturunkan; 1.121 sesi memiliki pengukuran BP valid dan 19 sesi malam
+  pada 26 November belum memiliki pengukuran.
+- Tidak ada profil atau catatan harian yang dikarantina.
+- Satu jawaban konteks sebelum pengukuran pagi tidak dikenali dan tetap perlu
+  diklarifikasi dari sumber. Nilai tersebut tidak ditebak atau otomatis diubah.
+- 570 jawaban tidur berbentuk angka tanpa satuan eksplisit tetap `NA` secara default.
+  Pertanyaan menyebut durasi dalam jam, tetapi interpretasi angka tersebut harus
+  disetujui tim/dosen sebelum flag `TOBA_SLEEP_BARE_NUMERIC_IS_HOURS=1` diaktifkan.
+
+Hasil di atas adalah **dry-run**, bukan bukti bahwa data telah dimuat ke database atau
+bahwa model Machine Learning sudah layak dilatih. Jangan mengunggah CSV aktual atau
+laporan baris-level ke GitHub. Setelah jawaban konteks diklarifikasi dan definisi tidur
+disetujui, jalankan ulang dry-run dan periksa seluruh laporan privat sebelum meminta
+persetujuan untuk commit ETL.
 
 ## Penyimpanan privat
 
@@ -23,6 +45,10 @@ Contoh nama file lokal:
 - `data/private/incoming/catatan_harian.csv`
 
 ## Dry-run aktual
+
+Simpan CSV hanya di `data/private/incoming/`. Untuk menginterpretasikan angka tidur
+tanpa satuan (mis. 6.5) sebagai jam, aktifkan `TOBA_SLEEP_BARE_NUMERIC_IS_HOURS=1`
+**hanya setelah keputusan tim/dosen**; default-nya mati dan nilai tidur tetap NA.
 
 Dari root repository di PowerShell:
 

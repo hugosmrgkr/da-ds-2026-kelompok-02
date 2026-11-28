@@ -28,8 +28,12 @@ def header_key(v):
     return re.sub(r"\s+", " ", str(v).strip().lstrip("\ufeff").strip()).casefold()
 
 # Versi ekspor aktual mengubah kata tanya nomor 22; makna kolom tetap sama.
-HEADER_ALIASES = {header_key('22. Hari ini, berapa porsi buah yang Anda makan?'):
-                  {header_key('22. Hari ini, berapa banyak buah yang Anda makan?')}}
+HEADER_ALIASES = {
+    header_key('22. Hari ini, berapa porsi buah yang Anda makan?'):
+        {header_key('22. Hari ini, berapa banyak buah yang Anda makan?')},
+    header_key('23. Hari ini, berapa porsi sayur yang Anda makan?'):
+        {header_key('23. Hari ini, berapa banyak sayur yang Anda makan?')},
+}
 
 def verify_headers(df, expected, name):
     if len(df.columns)!=len(expected):
@@ -165,7 +169,7 @@ def parse_days(df, profile_ids, synthetic=True, audit=None):
         missing_sleep=sum(d['sleep_hours'] is None for d in days), missing_sitting=sum(d['sitting'] is None for d in days),
         duplicate_pairs=len(duplicate_keys), rejections=errors, suspicious_dates=suspicious,
         invalid_bp_readings=invalid_bp, invalid_bp_count=len(invalid_bp),
-        assumption_sleep='HH:MM sintetis = durasi jam:menit; data aktual tetap NA sampai definisi disetujui.')
+        assumption_sleep='Sintetis: HH:MM = durasi jam:menit. Aktual: durasi distandarkan ke jam desimal (angka tanpa satuan = jam; "420 menit" dan "7 jam 30 menit" dikonversi); HH:MM tetap NA.')
     if audit is not None:
         audit.update(daily_clean=accepted, daily_issues=issues, daily_changes=changes,
                      consistency_issues=consistency, session_source_rows=session_source_rows)
@@ -174,10 +178,22 @@ def parse_days(df, profile_ids, synthetic=True, audit=None):
 
 def prepare(profiles_df, days_df, synthetic=True):
     audit = {}
+    # Google Forms exports may append a trailing "Score" column. It is form
+    # metadata, not a survey variable; ignore it only when the preceding
+    # columns exactly match the documented 24-column profile contract.
+    ignored_profile_columns = []
+    if (len(profiles_df.columns) == len(EXPECTED_PROFILE_HEADERS) + 1
+            and header_key(profiles_df.columns[-1]) == 'score'):
+        candidate = profiles_df.iloc[:, :-1].copy()
+        verify_headers(candidate, EXPECTED_PROFILE_HEADERS, 'Form Awal')
+        profiles_df = candidate
+        ignored_profile_columns.append('Score')
+
     profiles, profile_errors = parse_profiles(profiles_df, audit, synthetic)
     days, sessions, quality = parse_days(days_df, {r['respondent_id'] for r in profiles}, synthetic, audit)
     quality.update(raw_profiles=len(profiles_df), rejected_profiles=len(profile_errors),
                    profile_rejections=profile_errors, accepted_profiles=len(profiles),
+                   ignored_profile_columns=ignored_profile_columns,
                    source_kind='synthetic' if synthetic else 'uploaded')
     from .quality import build_quality
     quality.update(build_quality(profiles_df, days_df, profiles, days, sessions, audit, quality, synthetic))

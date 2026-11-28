@@ -8,20 +8,18 @@ import re
 from datetime import datetime, date
 
 
-FRUIT_NO = "Tidak makan buah"
-FRUIT_YES = "Makan buah"
+FRUIT_NO = "Tidak Makan Buah"
+FRUIT_YES = "Makan Buah"
 
 # Kontrak CSV sintetis lama tetap utuh agar fingerprint/artefak model sintetis tidak berubah.
 FRUIT_SYNTHETIC = ["Tidak mengonsumsi buah", "1 porsi", "2 porsi", "3 porsi atau lebih"]
 
-# Pertanyaan asin/olahan (soal 21) menggabungkan dua jenis makanan berbeda ("makanan asin ATAU
-# makanan olahan") dalam satu hitungan frekuensi, sehingga angka 1/2/3 kali tidak bisa dipastikan
-# mengacu ke jenis yang mana. Tim memutuskan data AKTUAL disederhanakan jadi biner. Label
-# menyebutkan "asin/olahan" secara eksplisit (bukan sekadar "Makan"/"Tidak Makan") karena frasa
-# generik itu bisa disalahpahami sebagai "makan apa pun hari ini", padahal soalnya spesifik
-# tentang makanan asin/olahan.
-SALTY_NO = "Tidak mengonsumsi asin/olahan"
-SALTY_YES = "Mengonsumsi asin/olahan"
+# Pertanyaan asin/olahan (soal 21) menggabungkan dua jenis makanan ("asin ATAU olahan") dalam satu
+# hitungan frekuensi, sehingga angka 1/2/3 kali tidak bisa dipastikan mengacu ke jenis yang mana.
+# Keputusan tim (revisi praproses): data AKTUAL disederhanakan menjadi biner "Makan" / "Tidak Makan".
+# Judul grafik/kolom tetap menyebut "asin/olahan" agar label pendek ini tidak disalahpahami.
+SALTY_NO = "Tidak Makan"
+SALTY_YES = "Makan"
 # Kontrak CSV sintetis lama tetap utuh agar fingerprint/artefak model sintetis tidak berubah.
 SALTY_SYNTHETIC = ["Tidak sama sekali", "1 kali", "2 kali", "3 kali atau lebih"]
 _NUMBER_WORDS = ("satu", "dua", "tiga", "empat", "lima", "enam", "tujuh", "delapan", "sembilan", "sepuluh")
@@ -227,7 +225,7 @@ DAILY_FIELDS.extend([
         "sleep",
         "jam",
         [0, 18],
-        note="HH:MM sebagai durasi hanya untuk simulasi. Data aktual tetap NA sampai definisi disetujui."
+        note="Disimpan dalam JAM desimal. Data aktual: angka tanpa satuan = jam (sesuai bunyi pertanyaan), '7 jam', '7,5 jam', '420 menit' dan '7 jam 30 menit' dikonversi ke jam. HH:MM tetap NA (ambigu)."
     ),
 
     field(
@@ -238,9 +236,10 @@ DAILY_FIELDS.extend([
         note=(
             "Data AKTUAL (bukan sintetis): soal 21 menggabungkan asin dan olahan "
             "dalam satu frekuensi, sehingga jumlah pasti tidak dipakai. "
-            "'Tidak sama sekali' = Tidak mengonsumsi asin/olahan; "
-            "'1 kali', '2 kali', dan '3 kali atau lebih' = Mengonsumsi asin/olahan. "
-            "Jawaban di luar empat pilihan formulir tidak ditebak."
+            "'Tidak sama sekali' = Tidak Makan; "
+            "'1 kali', '2 kali', dan '3 kali atau lebih' = Makan. "
+            "Jawaban 'Makan' / 'Tidak Makan' dari formulir revisi diterima apa adanya. "
+            "Jawaban lain tidak ditebak."
         )
     ),
 
@@ -251,8 +250,8 @@ DAILY_FIELDS.extend([
         max_length=90,
         note=(
             "Data AKTUAL (bukan sintetis): keputusan tim, "
-            "jawaban bernilai (1 porsi, 2, dua, satu, dst.) = Makan buah; "
-            "kosong, 0, '-' atau 'tidak' = Tidak makan buah."
+            "jawaban bernilai (1 porsi, 2, dua, satu, dst.) atau 'Makan Buah' = Makan Buah; "
+            "kosong, 0, '-', 'tidak' atau 'Tidak Makan Buah' = Tidak Makan Buah."
         )
     ),
 
@@ -335,6 +334,31 @@ def text(value):
         if s.casefold() in ("", "nan", "none", "nat", "<na>")
         else s
     )
+
+
+def parse_multi_select(value, options, aliases=None):
+    """Parse comma-joined Google Forms selections without splitting commas
+    that are part of an option label.
+    """
+    s = re.sub(r"\s+", " ", text(value) or "")
+    aliases = aliases or {}
+    candidates = sorted(set(options) | set(aliases), key=len, reverse=True)
+
+    def walk(position):
+        for option in candidates:
+            if not s.startswith(option, position):
+                continue
+            end = position + len(option)
+            canonical = aliases.get(option, option)
+            if end == len(s):
+                return [canonical]
+            if s.startswith(", ", end):
+                remainder = walk(end + 2)
+                if remainder is not None:
+                    return [canonical, *remainder]
+        return None
+
+    return walk(0)
 
 
 # ============================================================
@@ -472,16 +496,15 @@ def parse_numeric(value, unit=None, bounds=None, integer=False):
 # SLEEP DURATION PARSER
 # ============================================================
 
-# Durasi tidur data AKTUAL:
-# Dimatikan secara default sampai tim/dosen menyetujui definisinya.
-#
-# Aktifkan hanya dengan:
-# TOBA_SLEEP_EXPLICIT_UNITS=1
-#
-# Hanya bentuk berunit eksplisit yang diterima.
-# Angka telanjang dan HH:MM tetap sleep_semantics_unconfirmed.
+# Durasi tidur data AKTUAL (keputusan tim, 27 Nov 2026): durasi distandarkan ke JAM desimal.
+# - Bentuk berunit eksplisit (7 jam, 7,5 jam, 7 jam 30 menit, 420 menit) selalu dikonversi.
+# - Angka tanpa satuan dibaca JAM karena pertanyaan 20 berbunyi "Berapa jam Anda tidur".
+# - HH:MM dan teks lain tetap NA + sleep_semantics_unconfirmed (tidak ditebak).
+# Perilaku lama (semua NA) dapat dipulihkan dengan TOBA_SLEEP_EXPLICIT_UNITS=0 dan/atau
+# TOBA_SLEEP_BARE_NUMERIC_IS_HOURS=0.
 
 SLEEP_FLAG = "TOBA_SLEEP_EXPLICIT_UNITS"
+SLEEP_BARE_FLAG = "TOBA_SLEEP_BARE_NUMERIC_IS_HOURS"
 
 _RE_SLEEP_HOURS = re.compile(
     r"(" + _NUM + r")\s*jam",
@@ -495,7 +518,12 @@ _RE_SLEEP_MINUTES = re.compile(
 
 
 def sleep_explicit_enabled():
-    return os.environ.get(SLEEP_FLAG, "").strip() == "1"
+    return os.environ.get(SLEEP_FLAG, "").strip() != "0"
+
+
+def sleep_bare_numeric_hours_enabled():
+    """Angka tanpa satuan = jam (default aktif); set ke 0 untuk mematikan."""
+    return os.environ.get(SLEEP_BARE_FLAG, "").strip() != "0"
 
 
 def parse_sleep_explicit(s):
@@ -570,6 +598,10 @@ def parse_fruit_binary(value):
         )
     )
 
+    # Jawaban formulir revisi: "Makan Buah" (tanpa angka) = Makan Buah.
+    if not negative and re.fullmatch(r"(sudah )?makan( buah)?|ya", n):
+        return FRUIT_YES, None
+
     number = re.search(r"-?\d+(?:[.,]\d+)?", n)
 
     positive = (
@@ -612,7 +644,11 @@ def parse_salty_binary(value):
     s = text(value)
     if s is None:
         return None, None
-    canonical = {v.casefold(): v for v in SALTY_SYNTHETIC}.get(re.sub(r"\s+", " ", s).casefold())
+    key = re.sub(r"\s+", " ", s).casefold().strip(" .")
+    # Jawaban formulir revisi (biner) diterima langsung.
+    if key in ("makan", "tidak makan"):
+        return (SALTY_YES if key == "makan" else SALTY_NO), None
+    canonical = {v.casefold(): v for v in SALTY_SYNTHETIC}.get(key)
     if canonical is None:
         return None, "invalid_category"
     return (SALTY_NO, None) if canonical == SALTY_SYNTHETIC[0] else (SALTY_YES, None)
@@ -766,6 +802,14 @@ def parse_value(value, spec, synthetic):
 
                     return None, "invalid_sleep_duration"
 
+            if sleep_bare_numeric_hours_enabled() and re.fullmatch(_NUM, s):
+                hours = _to_float(s)
+                if 0 < hours < 1:  # mis. 0.3 / pecahan Excel: ambigu, tidak ditebak
+                    return None, "sleep_semantics_unconfirmed"
+                if 0 <= hours <= 18:
+                    return round(hours, 3), None
+                return None, "invalid_sleep_duration"
+
             return None, "sleep_semantics_unconfirmed"
 
         # Data sintetis
@@ -827,6 +871,23 @@ def parse_value(value, spec, synthetic):
 
         normalized = re.sub(r"\s+", " ", s)
 
+        # Confirmed spacing-only variant in the current real Form Awal export.
+        if not synthetic and spec["technical"] == "gender":
+            normalized = re.sub(r"\s*-\s*", "-", normalized)
+
+        # These real form fields allow multiple selections. Match complete
+        # option labels because some labels contain commas themselves.
+        if not synthetic and spec["technical"] in ("activity_type", "morning_context", "evening_context"):
+            aliases = {}
+            options = list(spec["categories"])
+            if spec["technical"] == "activity_type":
+                options.append("Pekerjaan rumah, seperti menyapu, mengepel, atau berkebun")
+            if spec["technical"] in ("morning_context", "evening_context"):
+                aliases["Tidak ada dari kegiatan di atas"] = "Tidak ada kegiatan di atas"
+            parsed = parse_multi_select(normalized, options, aliases)
+            if parsed is not None:
+                return ", ".join(parsed), None
+
         # Known corrupted fixture labels only;
         # never infer this repair for actual data.
         if synthetic and spec["technical"] == "sitting":
@@ -847,7 +908,7 @@ def parse_value(value, spec, synthetic):
             return canonical, None
 
         if kind == "open_category":
-            return normalized, "unmapped_other_category_review"
+            return None, "unmapped_other_category_review"
 
         return None, "invalid_category"
 

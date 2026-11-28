@@ -3,6 +3,7 @@ import json
 import pandas as pd
 from sqlalchemy import select, func
 from sqlalchemy.orm import Session
+from . import security
 from .models import Participant, CalendarDate, SessionType, BPSession, DailyBehavior, SourceState
 
 AGE_GROUPS = ['<15', '15\u201329', '30\u201344', '45\u201359', '60+', 'Tidak diketahui']
@@ -42,9 +43,11 @@ def source_summary(db):
               [('participants',Participant),('daily_records',DailyBehavior),('session_records',BPSession)]}
     empty = not any(counts.values())
     kind = state.source_kind if state else 'empty' if empty else 'unknown'
-    restricted = kind not in ('synthetic','empty') and (state is not None or not empty)
+    actual_open = kind == 'actual' and security.actual_view_allowed()
+    restricted = kind not in ('synthetic','empty') and (state is not None or not empty) and not actual_open
     message = ('Warehouse belum berisi data. Pengelola dapat memvalidasi dua formulir melalui ETL manual; aplikasi tidak mengisi data otomatis.' if empty else
                'Data non-sintetis memerlukan persetujuan dan kontrol akses sebelum ditampilkan.' if restricted else
+               'DATA AKTUAL responden. Tampilan diaktifkan pengelola (ALLOW_ACTUAL_DATA_VIEW). Nama responden tidak disimpan; hasil bersifat deskriptif, bukan diagnosis.' if actual_open else
                'DATA SINTETIS / SIMULASI. Data responden asli masih dalam proses pengumpulan.')
     return state, dict(**counts,source_kind=kind,warehouse_empty=empty,access_restricted=restricted,message=message)
 

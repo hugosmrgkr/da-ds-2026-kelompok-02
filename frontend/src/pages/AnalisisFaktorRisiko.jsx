@@ -244,12 +244,12 @@ export default function FaktorRisiko({ data, onFilter }) {
 
         {category(
           'salty_food',
-          'Makanan asin dan SBP harian',
-          'Kategori frekuensi mengikuti formulir. Perbedaan rerata antar-kategori dapat dipengaruhi faktor lain dan bukan bukti pengaruh makanan asin.',
+          'Makanan asin/olahan dan SBP harian',
+          'Kategori Makan / Tidak Makan makanan asin/olahan pada hari pencatatan (hasil praproses jawaban frekuensi). Perbedaan rerata antar-kategori dapat dipengaruhi faktor lain dan bukan bukti pengaruh makanan asin.',
         )}
 
         <ChartCard
-          title="Komposisi konsumsi buah"
+          title="Komposisi konsumsi buah (Makan Buah / Tidak Makan Buah)"
           sample={categorySample(c.fruit || [])}
           description="Proporsi catatan ID-tanggal yang memiliki jawaban buah dan SBP valid, bukan persentase responden unik. Missing tidak masuk penyebut."
         >
